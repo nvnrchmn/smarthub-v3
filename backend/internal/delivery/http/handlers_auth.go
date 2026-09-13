@@ -2,6 +2,8 @@ package http
 
 import (
 	"errors"
+	"log"
+	"strings"
 
 	"github.com/gofiber/fiber/v3"
 
@@ -35,9 +37,18 @@ func errStatus(err error) (int, string) {
 		return fiber.StatusTooManyRequests, "terlalu banyak percobaan, minta kode baru"
 	case errors.Is(err, usecase.ErrInvalidInput):
 		return fiber.StatusBadRequest, "data tidak valid"
+	case errors.Is(err, usecase.ErrBadInput):
+		// pesan validasi kita sendiri (aman ditampilkan, memudahkan pengguna)
+		return fiber.StatusBadRequest, strings.TrimPrefix(err.Error(), usecase.ErrBadInput.Error()+": ")
+	case errors.Is(err, usecase.ErrForbidden):
+		return fiber.StatusForbidden, "tidak berhak mengakses data ini"
+	case errors.Is(err, usecase.ErrNotFound):
+		return fiber.StatusNotFound, "data tidak ditemukan"
 	case errors.Is(err, usecase.ErrConflict):
 		return fiber.StatusConflict, "sudah terdaftar"
 	}
+	// Galat tak terduga wajib tercatat: tanpa ini kegagalan 500 tak bisa dilacak.
+	log.Printf("ERROR internal: %v", err)
 	return fiber.StatusInternalServerError, "terjadi kesalahan"
 }
 

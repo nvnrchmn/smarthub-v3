@@ -75,6 +75,9 @@ export default function Dashboard() {
             <p className="mt-1 text-sm text-ink2">
               Tautan aktivasi berlaku 7 hari; kode OTP dikirim ke nomor HP tujuan.
             </p>
+            <div className="mb-2 flex justify-end">
+              <button onClick={() => nav('/verifikasi')} className="btn-ghost">Verifikasi sensus</button>
+            </div>
             <form onSubmit={submitInvite} className="mt-4 grid gap-3 sm:grid-cols-2">
               <input
                 type="email"
@@ -117,11 +120,20 @@ export default function Dashboard() {
             )}
           </section>
         ) : (
-          <section className="mt-6 rounded-2xl border border-line bg-surface p-5">
-            <h2 className="font-semibold">Menu warga</h2>
-            <p className="mt-1 text-sm text-ink2">
-              Tagihan iuran, pengajuan surat, dan data rumah akan muncul di sini pada fase berikutnya.
-            </p>
+          <section className="mt-6 space-y-3">
+            <h2 className="font-semibold text-ink">Menu warga</h2>
+            <div className="animate-list space-y-3">
+              <button onClick={() => nav('/sensus')} className="card w-full text-left">
+                <p className="font-semibold text-ink">Data sensus &amp; dokumen</p>
+                <p className="text-xs text-ink2">
+                  Lengkapi NIK, nomor KK, dan unggah foto KTP &amp; Kartu Keluarga untuk diverifikasi sekretaris.
+                </p>
+              </button>
+              <div className="card">
+                <p className="font-semibold text-ink">Tagihan iuran</p>
+                <p className="text-xs text-ink2">Menyusul pada fase tagihan &amp; QRIS.</p>
+              </div>
+            </div>
           </section>
         )}
       </main>

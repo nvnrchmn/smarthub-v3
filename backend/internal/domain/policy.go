@@ -16,6 +16,7 @@ const (
 	ActionViewPII     Action = "VIEW_PII"
 	ActionVerifyPII   Action = "VERIFY_PII"
 	ActionManageUser  Action = "MANAGE_USER"
+	ActionEditProfile Action = "EDIT_PROFILE"
 )
 
 // SubjectContext — siapa yang meminta akses.
@@ -107,6 +108,12 @@ func CanAccess(sub SubjectContext, res ResourceContext, act Action) bool {
 
 	case ActionManageUser:
 		return hasRole(sub, RoleTenantManager)
+	case ActionEditProfile:
+		// Sekretaris/pengelola mengurus sensus; warga hanya profilnya sendiri.
+		if hasRole(sub, RoleSecretary, RoleTenantManager) {
+			return true
+		}
+		return hasRole(sub, RoleResident) && ownsFamilyCard(sub, res.FamilyCardID)
 	}
 
 	return false

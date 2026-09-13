@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/domain"
 )
@@ -66,6 +67,9 @@ func (s *Store) ActivateInvite(ctx context.Context, inv *domain.Invite, fullName
 			 values ($1, lower($2), $3, $4, $5, $6, 'ACTIVE', now()) returning id`,
 			inv.TenantID, inv.Email, inv.Phone, fullName, passwordHash, inv.Role,
 		).Scan(&userID); err != nil {
+			if isUniqueViolation(err) {
+				return ErrDuplicate
+			}
 			return err
 		}
 		_, err := tx.Exec(ctx, "update invite_tokens set used_at = now() where id = $1", inv.ID)
@@ -90,3 +94,13 @@ func (s *Store) UserByID(ctx context.Context, tenantID, userID string) (*domain.
 }
 
 var _ = time.Now
+
+
+// ErrDuplicate — dipakai agar pemanggil bisa membalas 409, bukan 500, saat
+// email/telepon sudah terdaftar (PostgreSQL 23505).
+var ErrDuplicate = errors.New("duplikat")
+
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
+}

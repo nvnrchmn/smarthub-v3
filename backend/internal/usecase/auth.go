@@ -133,6 +133,10 @@ func (a *Auth) AcceptInvite(ctx context.Context, tokenPlain, otp, fullName, pass
 		fullName = inv.Email
 	}
 	userID, err := a.Store.ActivateInvite(ctx, inv, fullName, hash)
+	if errors.Is(err, postgres.ErrDuplicate) {
+		// email sudah punya akun: balas 409 (bukan 500) dengan pesan jelas
+		return "", nil, ErrConflict
+	}
 	if err != nil {
 		return "", nil, err
 	}
@@ -173,10 +177,17 @@ func (a *Auth) SubjectFromToken(ctx context.Context, userID, tenantID string) (*
 	if u.Status != "ACTIVE" {
 		return nil, ErrInactive
 	}
+	// ABAC butuh tahu apa yang dimiliki warga (unit & kartu keluarga).
+	units, familyCards, err := a.Store.OwnershipOf(ctx, u.TenantID, u.ID)
+	if err != nil {
+		units, familyCards = nil, nil
+	}
 	return &domain.SubjectContext{
 		AccountID:       u.ID,
 		TenantID:        u.TenantID,
 		AppRoles:        []string{u.Role},
+		HouseUnitIDs:    units,
+		FamilyCardIDs:   familyCards,
 		LifecycleStatus: u.Status,
 	}, nil
 }

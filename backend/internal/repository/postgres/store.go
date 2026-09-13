@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/domain"
+	"github.com/nvnrchmn/smarthub-v3/backend/internal/pkg/crypto"
 )
 
 // Store — akses database untuk auth/onboarding.
@@ -17,6 +18,8 @@ import (
 // app.tenant_id selalu disetel; lookup tanpa konteks tenant (login, aktivasi)
 // memakai fungsi SECURITY DEFINER yang hanya mengembalikan kolom terbatas.
 type Store struct {
+	// Cipher dipakai untuk enkripsi NIK/KK (AES-256-GCM, AAD = tenant_id).
+	Cipher *crypto.Cipher
 	Pool *pgxpool.Pool
 }
 
@@ -85,3 +88,11 @@ func (s *Store) CreateTenantWithManager(ctx context.Context, tenantName, slug, e
 }
 
 var _ = time.Now
+
+// cipher — memastikan kunci enkripsi tersedia sebelum data PII disimpan.
+func (s *Store) cipher() *crypto.Cipher {
+	if s.Cipher == nil {
+		panic("cipher belum dipasang: AES_MASTER_KEY kosong")
+	}
+	return s.Cipher
+}

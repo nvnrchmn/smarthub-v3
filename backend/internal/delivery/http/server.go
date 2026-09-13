@@ -13,7 +13,8 @@ import (
 )
 
 type Server struct {
-	Auth *usecase.Auth
+	Auth   *usecase.Auth
+	Census *usecase.Census
 }
 
 // Auth — middleware: verifikasi JWT, lalu pastikan akun masih ACTIVE di database
@@ -71,6 +72,21 @@ func (s *Server) Router() *fiber.App {
 	auth := api.Group("", s.RequireAuth())
 	auth.Get("/me", s.Me)
 	auth.Post("/invite", RequireRoles(domain.RoleTenantManager, domain.RoleSecretary), s.CreateInvite)
+
+	// Sensus: warga mengurus datanya sendiri; pengurus memeriksa & memutuskan.
+	auth.Get("/census/me", s.MyProfile)
+	auth.Post("/census/me", s.SubmitMyProfile)
+	auth.Get("/census/stats", s.CensusStats)
+	auth.Get("/census", RequireRoles(domain.RoleTenantManager, domain.RoleSecretary), s.ListCensus)
+	auth.Get("/census/:id", s.CensusDetail)
+	auth.Post("/census/:id/reveal", s.RevealPII)
+	auth.Post("/census/:id/verify", RequireRoles(domain.RoleTenantManager, domain.RoleSecretary), s.VerifyCensus)
+	auth.Post("/census/:id/lifecycle", RequireRoles(domain.RoleTenantManager, domain.RoleSecretary), s.SetLifecycle)
+	auth.Post("/census/:id/occupancy", RequireRoles(domain.RoleTenantManager, domain.RoleSecretary), s.AssignUnit)
+	auth.Post("/census/:id/documents/:kind", s.UploadDocument)
+	auth.Get("/census/:id/documents/:kind", s.DownloadDocument)
+	auth.Get("/houses", RequireRoles(domain.RoleTenantManager, domain.RoleSecretary), s.ListUnits)
+	auth.Post("/houses", RequireRoles(domain.RoleTenantManager, domain.RoleSecretary), s.CreateUnit)
 
 	return app
 }

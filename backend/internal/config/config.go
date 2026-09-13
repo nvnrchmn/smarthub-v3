@@ -9,6 +9,11 @@ type Config struct {
 	JWTSecret   string
 	BaseURL     string
 	Env         string
+	AESKey      string
+	MinioEndpoint string
+	MinioAccess   string
+	MinioSecret   string
+	MinioBucketPII string
 }
 
 func Load() Config {
@@ -25,5 +30,10 @@ func Load() Config {
 		JWTSecret:   get("JWT_SECRET", ""),
 		BaseURL:     get("BASE_URL", "https://smarthub.logikraf.id"),
 		Env:         get("APP_ENV", "production"),
+		AESKey:      get("AES_MASTER_KEY", ""),
+		MinioEndpoint: get("MINIO_ENDPOINT", "127.0.0.1:9000"),
+		MinioAccess:   get("MINIO_ACCESS_KEY", ""),
+		MinioSecret:   get("MINIO_SECRET_KEY", ""),
+		MinioBucketPII: get("MINIO_BUCKET_PII", "smarthub-pii"),
 	}
 }

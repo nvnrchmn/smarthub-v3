@@ -55,6 +55,74 @@ export const api = {
     }),
 }
 
+// ---- Sensus (Fase 2) ----
+export type ResidentProfile = {
+  id: string
+  full_name: string
+  nik_last4: string
+  family_role: string
+  birth_place?: string
+  birth_date?: string
+  gender?: string
+  religion?: string
+  marital_status?: string
+  occupation?: string
+  education?: string
+  verification_status: string
+  rejection_reason?: string
+  lifecycle_status: string
+  has_ktp: boolean
+  has_kk: boolean
+  house_unit?: string
+  occupancy_type?: string
+  is_primary_payer?: boolean
+}
+
+export const CENSUS_STAFF_ROLES = ['TENANT_MANAGER', 'SECRETARY']
+
+export const census = {
+  me: () => request<ResidentProfile>('/census/me'),
+  submitMe: (body: Record<string, unknown>) =>
+    request<ResidentProfile>('/census/me', { method: 'POST', body: JSON.stringify(body) }),
+  queue: (status = 'UNVERIFIED') =>
+    request<ResidentProfile[]>(`/census?status=${encodeURIComponent(status)}`),
+  detail: (id: string) => request<ResidentProfile>(`/census/${id}`),
+  reveal: (id: string) =>
+    request<{ nik: string; kk_number: string }>(`/census/${id}/reveal`, { method: 'POST' }),
+  verify: (id: string, status: string, reason = '') =>
+    request<{ status: string }>(`/census/${id}/verify`, {
+      method: 'POST',
+      body: JSON.stringify({ status, reason }),
+    }),
+  upload: async (id: string, kind: 'KTP' | 'KK', file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    const token = auth.get()
+    const res = await fetch(`/api/census/${id}/documents/${kind}`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: fd,
+    })
+    if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error || 'unggah gagal')
+    return (await res.json()) as { key: string }
+  },
+  documentBlobUrl: async (id: string, kind: 'KTP' | 'KK') => {
+    const token = auth.get()
+    const res = await fetch(`/api/census/${id}/documents/${kind}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    })
+    if (!res.ok) throw new Error('dokumen tidak bisa dibuka')
+    return URL.createObjectURL(await res.blob())
+  },
+}
+
+export const roleLabelCensus: Record<string, string> = {
+  HEAD_OF_FAMILY: 'Kepala Keluarga',
+  SPOUSE: 'Istri/Suami',
+  CHILD: 'Anak',
+  OTHER: 'Lainnya',
+}
+
 export const roleLabel: Record<string, string> = {
   RESIDENT: 'Warga',
   SECRETARY: 'Sekretaris',
