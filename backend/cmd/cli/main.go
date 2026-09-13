@@ -37,7 +37,8 @@ func main() {
 	if *cmd != "create-tenant" && *cmd != "generate-invoices" {
 		log.Fatal("perintah tidak dikenal; pakai -cmd create-tenant | generate-invoices")
 	}
-	if *name == "" || *slug == "" || *email == "" || len(*password) < 8 || *adminDSN == "" {
+	// Argumen ini hanya wajib untuk pembuatan tenant, bukan untuk tugas cron.
+	if *cmd == "create-tenant" && (*name == "" || *slug == "" || *email == "" || len(*password) < 8 || *adminDSN == "") {
 		log.Fatal("wajib: -name -slug -email -password(min 8) dan ADMIN_DATABASE_URL")
 	}
 
@@ -77,7 +78,8 @@ func generateInvoices(store *postgres.Store, periode string, paksa bool) {
 		periode = time.Now().Format("2006-01")
 	}
 	hariIni := time.Now().Day()
-	sub := &domain.SubjectContext{AppRoles: []string{domain.RoleTreasurer}}
+	// Aktor cron: peran Bendahara pada tenant yang sedang diproses.
+	sub := &domain.SubjectContext{AppRoles: []string{domain.RoleTreasurer}, LifecycleStatus: "ACTIVE"}
 	notifier := notify.New()
 	for _, t := range daftar {
 		// Konteks tenant dipasang agar RLS tetap berlaku untuk operasi tulis.

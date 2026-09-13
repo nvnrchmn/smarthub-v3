@@ -508,7 +508,7 @@ func (s *Store) LampirkanBukti(ctx context.Context, tenantID, groupID, path stri
 // admin (root) sehingga tidak bergantung pada konteks RLS satu tenant.
 func (s *Store) Tenants(ctx context.Context) ([]struct{ ID, Nama string }, error) {
 	out := []struct{ ID, Nama string }{}
-	rows, err := s.Pool.Query(ctx, `select id::text, name from tenants where status = 'ACTIVE' order by name`)
+	rows, err := s.Pool.Query(ctx, `select id::text, name from tenants where lower(status) = 'active' order by name`)
 	if err != nil {
 		return nil, err
 	}

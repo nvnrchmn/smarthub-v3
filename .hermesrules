@@ -27,6 +27,15 @@
 - Bug ditemukan & ditutup: (a) rute `/census/free` tertelan `/census/:id` → dipindah ke `/family-cards/candidates`; (b) pesan 409 generik menyesatkan → kini memakai penjelasan spesifik; (c) kartu KK tanpa anggota → `members: null` membuat halaman React kosong → kini selalu `[]` + frontend defensif.
 - SISA: 2 token undangan uji di DB (boleh diabaikan, kedaluwarsa 7 hari). Data uji lain sudah bersih (user=1, profil=0, kk=0, hunian=0, unit=1 sisa uji A-01).
 
+
+## Status 13 Sep 2026 — Fase 3 tagihan: BACKEND selesai, UI belum
+- Migrasi 0006 (idempoten): tenant_billing_settings, fee_items, invoices, invoice_items, payments, cash_ledgers — semua ber-RLS.
+- Terbit massal: menginduk ke RUMAH; unit kosong hanya komponen dasar (uji: T-01 terisi 275.000 = IPL+keamanan+sampah; T-02 kosong 250.000 = IPL+keamanan); tunggakan periode sebelumnya ikut; idempoten (jalan kedua: dibuat=0 dilewati=3).
+- QRIS: klien `smarthub` (prefix `sb-`) terdaftar di hub Logikraf, env HUB_BASE_URL/HUB_INTERNAL_KEY/HUB_EXT_PREFIX di /etc/smarthub.env. **BELUM BISA MENERBITKAN QRIS**: hub membalas `500 gagal simpan pembayaran` (sub-akun pembayaran/Xendit Smarthub belum ada). Penjaga qr_string<150 karakter menolak menampilkan QR palsu ke warga — pesan ke pengguna: "akun pembayaran belum diverifikasi, pakai kas tunai" (503). PERLU AKSI PEMILIK: daftarkan akun pembayaran Smarthub di hub (fee_enabled=0 agar belum ditagih).
+- Kas tunai & buku kas TERVERIFIKASI: bayar tunai 250.000 -> PAID + kuitansi; bayar ulang 409; nominal beda ditolak; saldo petty_cash 250.000; setoran 100.000 -> petty 150.000 + bank 100.000, baris mutasi berpasangan disetujui Ketua; setoran melebihi saldo ditolak.
+- Cron `/etc/cron.d/smarthub-billing` (06:10 harian) -> `smarthub-cli -cmd generate-invoices`; per tenant hanya jalan bila tanggal terbitnya jatuh hari ini. Bukti: `dibuat=2` untuk periode 2026-10.
+- BELUM: halaman UI /tagihan (warga) & /keuangan (Bendahara); notifikasi tagihan WhatsApp belum pernah terkirim nyata (unit uji tak punya penghuni ber-akun); laporan/rekap bulanan.
+
 --- ARSIP ---
 
 ## Status 13 Sep 2026 — Fase 0 SELESAI (fondasi)
