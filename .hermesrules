@@ -53,6 +53,14 @@
 - Bukti: CI `ba0fc34` & `11bea6c` success; produksi login 200 (token 275 char), tenants=1 (Griya Asri), audit-log=100, settings tulis/baca/bersih 200, reset sandi lama salah 401, tanpa token 401; Playwright produksi mendarat di `/superadmin/dasbor`, "Griya Asri" tampil, 2 form Pengaturan tampil, 0 error konsol (/tmp/sbverify/4*.png).
 - BELUM: nilai kunci Xendit platform masih kosong (`settings` = `{}`) → isi di tab Pengaturan; sub-akun Xendit QRIS belum ada (`NO_SUB_ACCOUNT`).
 
+## QRIS Smarthub (13 Sep 2026) — pakai akun Xendit Logikraf saja
+- Keputusan pemilik: Smarthub memakai akun Xendit Logikraf, TANPA sub-akun sendiri. Baris `client_stores` `sb-` tetap `sub_account_id=NULL` → hub menerbitkan QR pada merchant akun induk Logikraf (tanpa `for-user-id`); `fee_enabled=0`.
+- Perbaikan hub: `/api/client-store-qris` kini idempoten (commit hub `9e09f3b`, `d3680f8`) — sebelumnya panggilan ulang tagihan yang sama selalu 500 `Duplicate entry ... idx_qris_payments_reference_id`.
+- Smarthub memisahkan galat gateway: hub 5xx → "gateway sedang bermasalah" (`ErrGatewaySementara`); QR placeholder (<150 char) → "QRIS belum aktif: kunci Xendit hub masih mode uji".
+- STATUS: pipa QRIS terbukti sampai Xendit (payment request dibuat, referensi unik bersufiks, panggilan ulang 200 `diambil_ulang: true`) TAPI QR belum bisa dibayar: `settings.xendit_secret_key` hub masih `xnd_development…` → Xendit membalas placeholder `"some-random-qr-string"` (21 char). Blokir = kredensial milik pemilik; isi kunci produksi di https://logikraf.id/admin/settings.
+- Uji: `python3 /tmp/sb_qris_e2e.py` (login owner → BUAT QRIS → CEK QRIS). Invoice uji griya-asri periode 2026-09 dibuat via CLI `-cmd generate-invoices -force` (butuh `ADMIN_DATABASE_URL` dari /opt/smarthub/.env).
+- Catatan: `***` di `/etc/cron.d/smarthub-billing` hanya redaksi tampilan tool — isinya `${POSTGRES_PASSWORD}` (cron benar; log belum ada karena dipasang setelah jadwal 06:10).
+
 --- ARSIP ---
 
 ## Status 13 Sep 2026 — Fase 0 SELESAI (fondasi)
