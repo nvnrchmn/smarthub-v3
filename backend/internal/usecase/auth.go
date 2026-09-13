@@ -3,11 +3,14 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log"
 	"strings"
 	"time"
 
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/domain"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/pkg/security"
+	"github.com/nvnrchmn/smarthub-v3/backend/internal/platform/notify"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/repository/postgres"
 )
 
@@ -40,41 +43,57 @@ var validRoles = map[string]bool{
 
 // CreateInvite — pengelola/sekretaris mengundang warga atau pengurus.
 // Mengembalikan tautan aktivasi (berlaku 7 hari) dan mengirim OTP ke nomor tujuan.
-func (a *Auth) CreateInvite(ctx context.Context, tenantID, email, phone, role, tenantName string) (string, error) {
+// CreateInvite — membuat undangan lalu mengirim tautan + OTP ke nomor warga.
+// Bila pengiriman WhatsApp gagal, undangan tetap dibuat dan tautan dikembalikan
+// supaya pengurus bisa meneruskannya sendiri (terkirim=false).
+func (a *Auth) CreateInvite(ctx context.Context, tenantID, email, phone, role, tenantName string) (link string, terkirim bool, err error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	role = strings.ToUpper(strings.TrimSpace(role))
 	if email == "" || !strings.Contains(email, "@") {
-		return "", ErrInvalidInput
+		return "", false, fmt.Errorf("%w: email tidak valid", ErrBadInput)
 	}
 	if !validRoles[role] {
-		return "", ErrInvalidInput
+		return "", false, fmt.Errorf("%w: peran tidak dikenal", ErrBadInput)
+	}
+	nomor := notify.NormalisasiNomor(phone)
+	if len(nomor) < 10 || len(nomor) > 15 || !strings.HasPrefix(nomor, "62") {
+		return "", false, fmt.Errorf("%w: nomor HP tidak valid, contoh 08123456789", ErrBadInput)
 	}
 
 	plain, tokenHash, err := security.NewToken()
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	code, otpHash, err := security.NewOTP()
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	inv := domain.Invite{
 		TenantID:  tenantID,
 		Email:     email,
-		Phone:     phone,
+		Phone:     nomor,
 		Role:      role,
 		TokenHash: tokenHash,
 		ExpiresAt: time.Now().Add(domain.InviteLinkTTL),
 	}
 	if err := a.Store.CreateInvite(ctx, inv, otpHash); err != nil {
-		return "", err
+		return "", false, err
 	}
 
-	link := strings.TrimRight(a.BaseURL, "/") + "/aktivasi?token=" + plain
+	link = strings.TrimRight(a.BaseURL, "/") + "/aktivasi?token=" + plain
 	// Undangan dikirim ke nomor warga; kalau belum ada kanal, kode masuk log server.
-	_ = a.Notify.SendInviteLink(phone, link, tenantName)
-	_ = a.Notify.SendOTP(phone, code, tenantName)
-	return link, nil
+	errLink := a.Notify.SendInviteLink(nomor, link, tenantName)
+	errOTP := a.Notify.SendOTP(nomor, code, tenantName)
+	if errLink != nil || errOTP != nil {
+		// Jangan gagalkan pembuatan undangan: tautan masih bisa diteruskan manual.
+		gagal := errOTP
+		if gagal == nil {
+			gagal = errLink
+		}
+		log.Printf("[undangan] pengiriman WhatsApp gagal untuk %s: %v", email, gagal)
+		return link, false, nil
+	}
+	return link, true, nil
 }
 
 // ResendOTP — kirim ulang kode untuk undangan yang belum dipakai.

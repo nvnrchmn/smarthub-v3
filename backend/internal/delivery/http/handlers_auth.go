@@ -87,12 +87,16 @@ func (s *Server) CreateInvite(c fiber.Ctx) error {
 	if err := c.Bind().JSON(&in); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "data tidak valid"})
 	}
-	link, err := s.Auth.CreateInvite(c.Context(), sub.TenantID, in.Email, in.Phone, in.Role, in.Name)
+	link, terkirim, err := s.Auth.CreateInvite(c.Context(), sub.TenantID, in.Email, in.Phone, in.Role, in.Name)
 	if err != nil {
 		code, msg := errStatus(err)
 		return c.Status(code).JSON(fiber.Map{"error": msg})
 	}
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"invite_link": link, "expires_in_days": 7})
+	resp := fiber.Map{"invite_link": link, "expires_in_days": 7, "wa_terkirim": terkirim}
+	if !terkirim {
+		resp["peringatan"] = "Undangan dibuat, tetapi pesan WhatsApp gagal dikirim. Teruskan tautan ini secara manual."
+	}
+	return c.Status(fiber.StatusCreated).JSON(resp)
 }
 
 func (s *Server) ResendOTP(c fiber.Ctx) error {
