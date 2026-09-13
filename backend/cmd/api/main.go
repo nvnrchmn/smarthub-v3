@@ -8,8 +8,8 @@ import (
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/db"
 	delivery "github.com/nvnrchmn/smarthub-v3/backend/internal/delivery/http"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/pkg/crypto"
-	"github.com/nvnrchmn/smarthub-v3/backend/internal/platform/notify"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/platform/hub"
+	"github.com/nvnrchmn/smarthub-v3/backend/internal/platform/notify"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/platform/storage"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/repository/postgres"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/usecase"
@@ -77,6 +77,6 @@ func main() {
 		Superadmin: superadmin,
 	}
 
-	log.Printf("smarthub-api listening on :%s", cfg.Port)
-	log.Fatal(srv.Router().Listen(":" + cfg.Port))
+	log.Printf("smarthub-api listening on %s:%s", cfg.Host, cfg.Port)
+	log.Fatal(srv.Router().Listen(cfg.Host + ":" + cfg.Port))
 }

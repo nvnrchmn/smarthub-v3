@@ -127,7 +127,7 @@ func (s *Store) Pengurus(ctx context.Context, tenantID string) ([]domain.Penguru
 	err := s.WithTenant(ctx, tenantID, func(tx pgx.Tx) error {
 		rows, err := tx.Query(ctx, `select coalesce(full_name,''), role, phone
 			from users
-			where status = 'active' and coalesce(phone,'') <> ''
+			where status = 'ACTIVE' and coalesce(phone,'') <> ''
 			  and role in ('TENANT_MANAGER','TREASURER','SECRETARY')
 			order by role`)
 		if err != nil {
