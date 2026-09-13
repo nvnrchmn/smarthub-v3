@@ -86,6 +86,11 @@
 - ATURAN BARU: workflow baru JANGAN pakai `upload-artifact` hanya untuk memindahkan berkas antar-job — gabung jobnya. Kalau artefak memang perlu, set `retention-days: 1`.
 - BELUM: LogikaKreatifIndonesia & logikraf-partners masih pakai artefak antar-job (retensi 1 hari sudah menahan, tapi belum nol) — perlu keputusan karena itu jalur deploy app live.
 
+- ✅ Watchdog `/usr/local/bin/gh-storage-watch.sh` + `/etc/cron.d/gh-storage-watch` (08:17 harian, sebagai `nvnrchmn`, ambang 400 MB, alert WA hanya saat status berubah, log `~/backups/gh-storage-watch.log`, state `~/backups/.gh-storage-state`). 15 repo terpantau.
+- JEBAKAN: `wa-notify.sh` mode 700 milik root → dari skrip yang jalan sebagai user WAJIB `sudo -n /usr/local/bin/wa-notify.sh`, kalau tidak "Permission denied" dan watchdog gagal DIAM-DIAM. Skrip kini juga alert bila pemeriksaan sendiri gagal (daftar repo kosong).
+- Endpoint billing yang benar: `gh api /users/nvnrchmn/settings/billing/usage` (endpoint `/settings/billing/actions` sudah 410). Storage dihitung **GB-jam**, kuota siklus reset tiap tanggal 1.
+- CATATAN: `.hermesrules` + `**.md` ada di `paths-ignore` → push dokumentasi TIDAK memicu deploy (hemat kuota).
+
 --- ARSIP ---
 
 ## Status 13 Sep 2026 — Fase 0 SELESAI (fondasi)
