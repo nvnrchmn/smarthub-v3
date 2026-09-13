@@ -61,6 +61,15 @@
 - Uji: `python3 /tmp/sb_qris_e2e.py` (login owner → BUAT QRIS → CEK QRIS). Invoice uji griya-asri periode 2026-09 dibuat via CLI `-cmd generate-invoices -force` (butuh `ADMIN_DATABASE_URL` dari /opt/smarthub/.env).
 - Catatan: `***` di `/etc/cron.d/smarthub-billing` hanya redaksi tampilan tool — isinya `${POSTGRES_PASSWORD}` (cron benar; log belum ada karena dipasang setelah jadwal 06:10).
 
+## Modul Laporan & Tunggakan (13 Sep 2026, commit `001e219`)
+- Backend: `repository/reports.go` (`RekapBulanan`, `Tunggakan`, `Pengurus`), `usecase/reports.go` (`Rekap`, `Tunggakan`, `CSV`, `Kirim`), `usecase/reports_pdf.go` (go-pdf/fpdf), `handlers_reports.go`. Rute (pengurus): `GET /api/reports/monthly?period=YYYY-MM`, `GET /api/reports/arrears`, `GET /api/reports/download?format=pdf|csv`, `POST /api/reports/send`.
+- Gerbang: policy `ActionManageBilling` → Ketua (`TENANT_MANAGER`) + Bendahara (`TREASURER`); Sekretaris DITOLAK (urusannya sensus/undangan). Middleware rute keuangan dipisah: `financeStaff` (Manager+Treasurer) vs `staff` (Manager+Secretary) — SEBELUMNYA rute tagihan memakai `staff`, jadi Bendahara tak bisa akses keuangan.
+- Frontend: halaman `/laporan` (periode, kartu ringkasan, rincian iuran, aging 0-30/31-60/61-90/>90, tabel tunggakan, Unduh PDF/CSV, Kirim WA) + **menu navigasi baru** `components/Layout.tsx` (sidebar desktop, bottom-nav mobile, role-aware, tombol Keluar). Sebelum ini TIDAK ADA menu sama sekali — halaman hanya bisa dibuka lewat URL.
+- JEBAKAN SQL: `invoices.period` bertipe DATE → `period = $1::date` GAGAL untuk "2026-09" (`invalid input syntax for type date`); pakai `period = to_date($1,'YYYY-MM')`.
+- CSV: BOM UTF-8 + pemisah `;` supaya rapi di Excel lokal.
+- Bukti: `go test ./...` hijau (3 tes baru: gerbang peran, periode tidak valid, isi CSV); uji produksi Playwright: login → `/dasbor`, menu tampil (Dasbor/Tagihan/Keuangan/Laporan/Rumah/Sensus), `/laporan` menampilkan Rp275.000 + Iuran IPL/KEAMANAN/SAMPAH, unduh PDF 2.124 byte, tombol "Kirim ke pengurus" menjawab jelas saat belum ada nomor pengurus. Screenshot `/tmp/sbverify/50-laporan.png`.
+- SISA: pengurus belum punya nomor WhatsApp (`users.phone` kosong) → isi di menu Tim supaya kirim laporan jalan; kolom "Kepala keluarga" kosong kalau unit tak punya okupansi aktif terverifikasi; tema masih terang (belum pakai mode gelap).
+
 --- ARSIP ---
 
 ## Status 13 Sep 2026 — Fase 0 SELESAI (fondasi)
