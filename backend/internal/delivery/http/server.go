@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/limiter"
 
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/domain"
@@ -60,6 +61,32 @@ func RequireRoles(roles ...string) fiber.Handler {
 // Router — seluruh rute API v3.
 func (s *Server) Router() *fiber.App {
 	app := fiber.New(fiber.Config{AppName: "Smarthub API"})
+
+	// CORS: hanya origin resmi yang diizinkan (SM01-CORS).
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"https://smarthub.logikraf.id", "http://localhost:5173"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		AllowCredentials: true,
+		MaxAge:           86400,
+	}))
+
+	// Security headers (SM01-HEADERS).
+	app.Use(func(c fiber.Ctx) error {
+		c.Set("X-Content-Type-Options", "nosniff")
+		c.Set("X-Frame-Options", "DENY")
+		c.Set("X-XSS-Protection", "1; mode=block")
+		c.Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		c.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		c.Set("Content-Security-Policy", "default-src 'self'")
+		return c.Next()
+	})
+
+	// Global rate limiter per-IP (120 req/menit) untuk semua route /api/* (SM01-LIMIT).
+	app.Use("/api", limiter.New(limiter.Config{
+		Max:        120,
+		Expiration: time.Minute,
+	}))
 
 	app.Get("/health", s.health)
 	app.Get("/api/health", s.health)

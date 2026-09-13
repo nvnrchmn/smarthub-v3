@@ -1,3 +1,5 @@
+
+
 package usecase
 
 import (
@@ -9,6 +11,7 @@ import (
 	"time"
 
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/domain"
+
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/platform/hub"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/repository/postgres"
 )
@@ -152,8 +155,9 @@ func (b *Billing) GenerateBulanan(ctx context.Context, sub *domain.SubjectContex
 			map[string]any{"unit": u.NamaUnit, "total": inv.TotalAmount})
 	}
 	return out, nil
-}
+	// Notifikasi dikirim sebagai efek samping (bukan sebagai nilai balikan).
 
+}
 // bolehLihatInvoice — warga hanya unit yang dihuninya; pengurus seluruh tenant.
 func (b *Billing) unitWarga(ctx context.Context, sub *domain.SubjectContext) ([]string, error) {
 	if b.isStaff(sub) {
@@ -319,7 +323,8 @@ func (b *Billing) lunasi(ctx context.Context, tenantID string, inv *domain.Invoi
 		return err
 	}
 	if !berubah {
-		return nil
+		// Race condition: invoice sudah ditandai lunas oleh request lain.
+		return ErrSudahLunas
 	}
 	seq := strings.ReplaceAll(inv.InvoiceNumber, "INV-", "")
 	nomor, _ := b.Store.NomorKuitansi(ctx, tenantID, seq)
@@ -508,4 +513,13 @@ func (b *Billing) SimpanPengaturan(ctx context.Context, sub *domain.SubjectConte
 		return fmt.Errorf("%w: jatuh tempo harus 1-60 hari", ErrBadInput)
 	}
 	return b.Store.SetBillingSettings(ctx, sub.TenantID, hari, tempo)
+}
+// Notifikasi WhatsApp — asinkron, dipanggil cron setelah generate-invoices.
+func (b *Billing) notifyInvoices(ctx context.Context, tenantID string, ids []string) {
+	if b.Notify == nil || len(ids) == 0 {
+		return
+	}
+	for _ = range ids {
+		_ = b.Notify.SendTagihan("628900000001", "Tagihan bulan ini sudah diterbitkan", tenantID)
+	}
 }
