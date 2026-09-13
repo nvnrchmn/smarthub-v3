@@ -18,6 +18,15 @@
 - BUG yang ditemukan & ditutup saat uji: (a) otp_sent_at tak diisi -> aktivasi selalu 410; (b) cabang kepemilikan di CanAccess bisa dilalui peran tak dikenal.
 - BELUM: kanal WhatsApp/email NYATA — sekarang OTP hanya muncul di log server ([notify:dev]); set WA_BASE_URL/WA_AUTH/WA_DEVICE (GoWA) atau SMTP_* untuk kirim sungguhan. Belum: lupa sandi, audit log ke tabel, refresh token, halaman kelola pengguna.
 
+
+## Status 13 Sep 2026 — kanal OTP + kelola rumah/KK SELESAI
+- **Kanal WhatsApp AKTIF**: GoWA (kontainer `gowa`, 127.0.0.1:3001, perangkat `mg001` "Logikraf Official" logged_in). Env di `/etc/smarthub.env`: `WA_BASE_URL`, `WA_BASIC_AUTH`, `WA_DEVICE_ID`. Uji kirim nyata: nomor `0898-3342-429` → dinormalkan `6289…29` → terkirim.
+- notify.go dirapikan: normalisasi nomor Indonesia (08…/+62/62/spasi → 62…), galat gateway TIDAK lagi ditelan (dulu balas sukses padahal 400), percobaan ulang 1× untuk 5xx/timeout, validasi respons GoWA, log berhasil dgn nomor tersamar. `WA_TERKIRIM` dikembalikan ke UI (`wa_terkirim` + `peringatan`) sehingga pengurus bisa meneruskan tautan manual bila WA gagal. Uji unit: `internal/platform/notify` (normalisasi).
+- **Kelola rumah/KK**: `PATCH/DELETE /api/houses/:id` (hapus ditolak 409 bila masih dihuni), `POST /api/census/:id/occupancy/end` (end_date, riwayat utuh, rumah → VACANT), `GET/POST /api/family-cards`, `POST/DELETE /api/family-cards/:id/members[/:memberId]`, `GET /api/family-cards/candidates`. Migrasi `0005_house_kk.sql`. UI `/rumah` (2 tab) + menu di dasbor pengurus.
+- Bukti: E2E API 11 langkah lolos; E2E UI **14/14 lolos** (browser sungguhan) — termasuk 409 "rumah masih dihuni, akhiri hunian dulu" dan nomor KK tampil tersamar (asli tidak pernah keluar).
+- Bug ditemukan & ditutup: (a) rute `/census/free` tertelan `/census/:id` → dipindah ke `/family-cards/candidates`; (b) pesan 409 generik menyesatkan → kini memakai penjelasan spesifik; (c) kartu KK tanpa anggota → `members: null` membuat halaman React kosong → kini selalu `[]` + frontend defensif.
+- SISA: 2 token undangan uji di DB (boleh diabaikan, kedaluwarsa 7 hari). Data uji lain sudah bersih (user=1, profil=0, kk=0, hunian=0, unit=1 sisa uji A-01).
+
 --- ARSIP ---
 
 ## Status 13 Sep 2026 — Fase 0 SELESAI (fondasi)
