@@ -1,6 +1,9 @@
 // Klien API tipis: token disimpan di localStorage, semua panggilan lewat /api
 // (vhost meneruskan ke service Go).
 const TOKEN_KEY = 'smarthub.token'
+// Token superadmin terpisah: halaman superadmin tidak boleh memakai token tenant
+// (dan sebaliknya), kalau tidak semua panggilan /api/superadmin/* akan 401.
+const SUPERADMIN_TOKEN_KEY = 'smarthub.superadmin.token'
 
 export type Me = { user_id: string; tenant_id: string; roles: string[]; status: string }
 
@@ -18,8 +21,12 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = auth.get()
+async function request<T>(
+  path: string,
+  init: RequestInit = {},
+  mode: 'tenant' | 'superadmin' = 'tenant',
+): Promise<T> {
+  const token = mode === 'superadmin' ? localStorage.getItem(SUPERADMIN_TOKEN_KEY) : auth.get()
   const res = await fetch(`/api${path}`, {
     ...init,
     headers: {
@@ -327,29 +334,39 @@ export type TenantList = { id: string; name: string; slug: string; status: strin
 export type AuditLogEntry = { id: number; tenant_id: string; actor_id?: string; action: string; entity?: string; entity_id?: string; detail?: any; created_at: string }
 
 export const superadmin = {
-  TOKEN_KEY: 'smarthub.superadmin.token',
-  get: () => localStorage.getItem(superadmin.TOKEN_KEY),
-  set: (t: string) => localStorage.setItem(superadmin.TOKEN_KEY, t),
-  clear: () => localStorage.removeItem(superadmin.TOKEN_KEY),
+  TOKEN_KEY: SUPERADMIN_TOKEN_KEY,
+  get: () => localStorage.getItem(SUPERADMIN_TOKEN_KEY),
+  set: (t: string) => localStorage.setItem(SUPERADMIN_TOKEN_KEY, t),
+  clear: () => localStorage.removeItem(SUPERADMIN_TOKEN_KEY),
   login: async (email: string, password: string) => {
-    const r = await request<{ token: string; superadmin: SuperadminMe }>('/superadmin/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    })
+    const r = await request<{ token: string; superadmin: SuperadminMe }>(
+      '/superadmin/login',
+      { method: 'POST', body: JSON.stringify({ email, password }) },
+      'superadmin',
+    )
     superadmin.set(r.token)
     return r.superadmin
   },
-  me: () => request<SuperadminMe>('/superadmin/me'),
+  me: () => request<SuperadminMe>('/superadmin/me', {}, 'superadmin'),
   // Backend mengembalikan {items, jumlah}; UI hanya butuh arraynya.
-  listTenants: async () => (await request<{ items: TenantList[] | null }>('/superadmin/tenants')).items ?? [],
-  auditLog: async () => (await request<{ items: AuditLogEntry[] | null }>('/superadmin/audit-log')).items ?? [],
-  allSettings: async () => (await request<{ items: Record<string, string> | null }>('/superadmin/settings')).items ?? {},
+  listTenants: async () =>
+    (await request<{ items: TenantList[] | null }>('/superadmin/tenants', {}, 'superadmin')).items ?? [],
+  auditLog: async () =>
+    (await request<{ items: AuditLogEntry[] | null }>('/superadmin/audit-log', {}, 'superadmin')).items ?? [],
+  allSettings: async () =>
+    (await request<{ items: Record<string, string> | null }>('/superadmin/settings', {}, 'superadmin')).items ?? {},
   resetPassword: (oldPw: string, newPw: string) =>
-    request<{ status: string }>('/superadmin/reset-password', { method: 'POST', body: JSON.stringify({ old_password: oldPw, new_password: newPw }) }),
-  getSetting: async (key: string) => {
-    const r = await request<{ key: string; value: string }>(`/superadmin/settings?key=${encodeURIComponent(key)}`)
-    return r
-  },
+    request<{ status: string }>(
+      '/superadmin/reset-password',
+      { method: 'POST', body: JSON.stringify({ old_password: oldPw, new_password: newPw }) },
+      'superadmin',
+    ),
+  getSetting: (key: string) =>
+    request<{ key: string; value: string }>(`/superadmin/settings?key=${encodeURIComponent(key)}`, {}, 'superadmin'),
   setSetting: (key: string, value: string) =>
-    request<{ status: string }>('/superadmin/settings', { method: 'POST', body: JSON.stringify({ key, value }) }),
+    request<{ status: string }>(
+      '/superadmin/settings',
+      { method: 'POST', body: JSON.stringify({ key, value }) },
+      'superadmin',
+    ),
 }
