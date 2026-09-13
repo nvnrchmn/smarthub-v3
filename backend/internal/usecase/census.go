@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"regexp"
 	"strings"
 	"time"
 
@@ -327,4 +328,105 @@ func allDigits(s string) bool {
 		}
 	}
 	return true
+}
+
+// UpdateUnit — ubah data/status rumah.
+func (c *Census) UpdateUnit(ctx context.Context, sub *domain.SubjectContext, id, block, number, status, notes string) (*domain.HouseUnit, error) {
+	if !c.isStaff(sub) {
+		return nil, ErrForbidden
+	}
+	if status != "" && status != domain.UnitOccupied && status != domain.UnitVacant && status != domain.UnitRenovation {
+		return nil, fmt.Errorf("%w: status rumah tidak dikenal", ErrBadInput)
+	}
+	u, err := c.Store.UpdateHouseUnit(ctx, sub.TenantID, id, block, number, status, notes)
+	if err != nil {
+		return nil, err
+	}
+	_ = c.Store.LogAudit(ctx, sub.TenantID, sub.AccountID, "HOUSE_UNIT_UPDATE", "house_unit", id,
+		map[string]any{"status": u.OccupancyStatus})
+	return u, nil
+}
+
+// DeleteUnit — hapus rumah; ditolak bila masih dihuni.
+func (c *Census) DeleteUnit(ctx context.Context, sub *domain.SubjectContext, id string) error {
+	if !c.isStaff(sub) {
+		return ErrForbidden
+	}
+	if err := c.Store.DeleteHouseUnit(ctx, sub.TenantID, id); err != nil {
+		if errors.Is(err, postgres.ErrStillOccupied) {
+			return fmt.Errorf("%w: rumah masih dihuni, akhiri hunian dulu", ErrConflict)
+		}
+		return err
+	}
+	_ = c.Store.LogAudit(ctx, sub.TenantID, sub.AccountID, "HOUSE_UNIT_DELETE", "house_unit", id, nil)
+	return nil
+}
+
+// EndOccupancy — akhiri hunian (pindah/keluar) tanpa menghapus riwayat.
+func (c *Census) EndOccupancy(ctx context.Context, sub *domain.SubjectContext, profileID string) error {
+	if !c.isStaff(sub) {
+		return ErrForbidden
+	}
+	if err := c.Store.EndOccupancy(ctx, sub.TenantID, profileID); err != nil {
+		return err
+	}
+	_ = c.Store.LogAudit(ctx, sub.TenantID, sub.AccountID, "OCCUPANCY_END", "resident_profile", profileID, nil)
+	return nil
+}
+
+// FamilyCards / FreeResidents — struktur Kartu Keluarga.
+func (c *Census) FamilyCards(ctx context.Context, sub *domain.SubjectContext) ([]domain.FamilyCard, error) {
+	if !c.isStaff(sub) {
+		return nil, ErrForbidden
+	}
+	return c.Store.ListFamilyCards(ctx, sub.TenantID)
+}
+
+func (c *Census) FreeResidents(ctx context.Context, sub *domain.SubjectContext) ([]domain.FamilyCardMember, error) {
+	if !c.isStaff(sub) {
+		return nil, ErrForbidden
+	}
+	return c.Store.FreeResidents(ctx, sub.TenantID)
+}
+
+func (c *Census) CreateFamilyCard(ctx context.Context, sub *domain.SubjectContext, kkNumber string) (string, error) {
+	if !c.isStaff(sub) {
+		return "", ErrForbidden
+	}
+	if kkNumber != "" && !regexp.MustCompile(`^[0-9]{16}$`).MatchString(kkNumber) {
+		return "", fmt.Errorf("%w: nomor KK harus 16 digit angka", ErrBadInput)
+	}
+	id, err := c.Store.CreateFamilyCard(ctx, sub.TenantID, kkNumber)
+	if err != nil {
+		return "", err
+	}
+	_ = c.Store.LogAudit(ctx, sub.TenantID, sub.AccountID, "FAMILY_CARD_CREATE", "family_card", id, nil)
+	return id, nil
+}
+
+func (c *Census) AttachMember(ctx context.Context, sub *domain.SubjectContext, cardID, profileID string) error {
+	if !c.isStaff(sub) {
+		return ErrForbidden
+	}
+	if cardID == "" || profileID == "" {
+		return fmt.Errorf("%w: kartu keluarga dan warga wajib", ErrBadInput)
+	}
+	if err := c.Store.AttachMember(ctx, sub.TenantID, cardID, profileID); err != nil {
+		return err
+	}
+	_ = c.Store.LogAudit(ctx, sub.TenantID, sub.AccountID, "FAMILY_CARD_MEMBER_ADD", "family_card", cardID,
+		map[string]any{"warga": profileID})
+	return nil
+}
+
+func (c *Census) DetachMember(ctx context.Context, sub *domain.SubjectContext, cardID, profileID string) error {
+	if !c.isStaff(sub) {
+		return ErrForbidden
+	}
+	if err := c.Store.DetachMember(ctx, sub.TenantID, cardID, profileID); err != nil {
+		return err
+	}
+	_ = c.Store.LogAudit(ctx, sub.TenantID, sub.AccountID, "FAMILY_CARD_MEMBER_REMOVE", "family_card", cardID,
+		map[string]any{"warga": profileID})
+	return nil
 }

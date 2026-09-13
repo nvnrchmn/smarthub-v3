@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -93,12 +92,14 @@ func (s *Store) UserByID(ctx context.Context, tenantID, userID string) (*domain.
 	return &u, err
 }
 
-var _ = time.Now
 
 
 // ErrDuplicate — dipakai agar pemanggil bisa membalas 409, bukan 500, saat
 // email/telepon sudah terdaftar (PostgreSQL 23505).
 var ErrDuplicate = errors.New("duplikat")
+
+// ErrStillOccupied — rumah masih punya penghuni aktif sehingga tidak bisa dihapus.
+var ErrStillOccupied = errors.New("rumah masih dihuni")
 
 func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError

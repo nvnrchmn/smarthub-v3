@@ -75,8 +75,9 @@ export default function Dashboard() {
             <p className="mt-1 text-sm text-ink2">
               Tautan aktivasi berlaku 7 hari; kode OTP dikirim ke nomor HP tujuan.
             </p>
-            <div className="mb-2 flex justify-end">
+            <div className="mb-2 flex flex-wrap justify-end gap-2">
               <button onClick={() => nav('/verifikasi')} className="btn-ghost">Verifikasi sensus</button>
+              <button onClick={() => nav('/rumah')} className="btn-ghost">Kelola rumah &amp; KK</button>
             </div>
             <form onSubmit={submitInvite} className="mt-4 grid gap-3 sm:grid-cols-2">
               <input

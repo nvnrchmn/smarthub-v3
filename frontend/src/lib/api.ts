@@ -134,3 +134,74 @@ export const roleLabel: Record<string, string> = {
   TREASURER: 'Bendahara',
   TENANT_MANAGER: 'Pengelola',
 }
+// ---- Kelola rumah & kartu keluarga (Fase 2 lanjutan) ----
+export type HouseUnit = {
+  id: string
+  block: string
+  unit_number: string
+  occupancy_status: string
+  notes?: string
+  occupant_count?: number
+  primary_occupant?: string
+}
+
+export type FamilyMember = {
+  id: string
+  full_name: string
+  family_role: string
+  verification_status: string
+  lifecycle_status: string
+}
+
+export type FamilyCard = {
+  id: string
+  number_last4: string
+  has_file: boolean
+  member_count: number
+  members: FamilyMember[]
+}
+
+export const UNIT_STATUS_LABEL: Record<string, string> = {
+  OCCUPIED: 'Dihuni',
+  VACANT: 'Kosong',
+  RENOVATION: 'Renovasi',
+}
+
+export const houses = {
+  list: async () => {
+    const r = await request<{ items: HouseUnit[]; jumlah: number }>('/houses')
+    return r.items ?? []
+  },
+  create: (body: { block: string; number: string; notes?: string }) =>
+    request<HouseUnit>('/houses', { method: 'POST', body: JSON.stringify(body) }),
+  update: (id: string, body: { block?: string; number?: string; status?: string; notes?: string }) =>
+    request<HouseUnit>(`/houses/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  remove: (id: string) => request<{ status: string }>(`/houses/${id}`, { method: 'DELETE' }),
+}
+
+export const occupancy = {
+  assign: (profileId: string, body: { house_unit_id: string; occupancy_type: string; is_primary_payer: boolean }) =>
+    request<{ status: string }>(`/census/${profileId}/occupancy`, { method: 'POST', body: JSON.stringify(body) }),
+  end: (profileId: string) =>
+    request<{ status: string }>(`/census/${profileId}/occupancy/end`, { method: 'POST' }),
+}
+
+export const familyCards = {
+  list: async () => {
+    const r = await request<{ items: FamilyCard[]; jumlah: number }>('/family-cards')
+    return r.items ?? []
+  },
+  create: (kkNumber: string) =>
+    request<{ id: string }>('/family-cards', { method: 'POST', body: JSON.stringify({ kk_number: kkNumber }) }),
+  addMember: (cardId: string, residentId: string) =>
+    request<{ status: string }>(`/family-cards/${cardId}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ resident_id: residentId }),
+    }),
+  removeMember: (cardId: string, residentId: string) =>
+    request<{ status: string }>(`/family-cards/${cardId}/members/${residentId}`, { method: 'DELETE' }),
+  candidates: async () => {
+    const r = await request<{ items: FamilyMember[]; jumlah: number }>('/family-cards/candidates')
+    return r.items ?? []
+  },
+}

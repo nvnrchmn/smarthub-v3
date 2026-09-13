@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -277,7 +276,6 @@ func (s *Store) SensusStats(ctx context.Context, tenantID string) (total, verifi
 	return
 }
 
-var _ = time.Now
 
 // OwnershipOf — unit rumah & kartu keluarga milik akun ini; dipakai ABAC.
 func (s *Store) OwnershipOf(ctx context.Context, tenantID, userID string) (units, familyCards []string, err error) {

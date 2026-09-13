@@ -38,6 +38,8 @@ type HouseUnit struct {
 	UnitNumber      string `json:"unit_number"`
 	OccupancyStatus string `json:"occupancy_status"`
 	Notes           string `json:"notes,omitempty"`
+	OccupantCount   int    `json:"occupant_count"`
+	PrimaryOccupant string `json:"primary_occupant,omitempty"`
 }
 
 // OccupancyInput — penempatan warga pada sebuah unit (dipakai Sekretaris).
@@ -68,4 +70,36 @@ const (
 	LifeActive   = "ACTIVE"
 	LifeMovedOut = "MOVED_OUT"
 	LifeDeceased = "DECEASED"
+)
+// FamilyCard — Kartu Keluarga. Nomor KK disimpan terenkripsi; daftar memakai
+// number_last4 (4 digit terakhir) agar tidak perlu dekripsi untuk menampilkan.
+type FamilyCard struct {
+	ID          string             `json:"id"`
+	NumberLast4 string             `json:"number_last4"`
+	HasFile     bool               `json:"has_file"`
+	MemberCount int                `json:"member_count"`
+	Members     []FamilyCardMember `json:"members"`
+	CreatedAt   time.Time          `json:"created_at"`
+}
+
+type FamilyCardMember struct {
+	ID                 string `json:"id"`
+	FullName           string `json:"full_name"`
+	FamilyRole         string `json:"family_role"`
+	VerificationStatus string `json:"verification_status"`
+	LifecycleStatus    string `json:"lifecycle_status"`
+}
+
+// Status hunian rumah (house_units.occupancy_status).
+const (
+	UnitOccupied   = "OCCUPIED"
+	UnitVacant     = "VACANT"
+	UnitRenovation = "RENOVATION"
+)
+
+// Jenis hunian (house_occupancies.occupancy_type).
+const (
+	OccupancyOwnerOccupant   = "OWNER_OCCUPANT"
+	OccupancyTenant          = "TENANT"
+	OccupancyOwnerNonResident = "OWNER_NON_RESIDENT"
 )

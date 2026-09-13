@@ -85,8 +85,17 @@ func (s *Server) Router() *fiber.App {
 	auth.Post("/census/:id/occupancy", RequireRoles(domain.RoleTenantManager, domain.RoleSecretary), s.AssignUnit)
 	auth.Post("/census/:id/documents/:kind", s.UploadDocument)
 	auth.Get("/census/:id/documents/:kind", s.DownloadDocument)
-	auth.Get("/houses", RequireRoles(domain.RoleTenantManager, domain.RoleSecretary), s.ListUnits)
-	auth.Post("/houses", RequireRoles(domain.RoleTenantManager, domain.RoleSecretary), s.CreateUnit)
+	staff := RequireRoles(domain.RoleTenantManager, domain.RoleSecretary)
+	auth.Get("/houses", staff, s.ListUnits)
+	auth.Post("/houses", staff, s.CreateUnit)
+	auth.Patch("/houses/:id", staff, s.UpdateUnit)
+	auth.Delete("/houses/:id", staff, s.DeleteUnit)
+	auth.Post("/census/:id/occupancy/end", staff, s.EndOccupancy)
+	auth.Get("/family-cards/candidates", staff, s.FreeResidents)
+	auth.Get("/family-cards", staff, s.FamilyCards)
+	auth.Post("/family-cards", staff, s.CreateFamilyCard)
+	auth.Post("/family-cards/:id/members", staff, s.AddFamilyMember)
+	auth.Delete("/family-cards/:id/members/:memberId", staff, s.RemoveFamilyMember)
 
 	return app
 }

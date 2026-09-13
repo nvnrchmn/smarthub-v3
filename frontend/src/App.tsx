@@ -5,6 +5,7 @@ import Activate from './pages/Activate'
 import Dashboard from './pages/Dashboard'
 import Sensus from './pages/Sensus'
 import Verifikasi from './pages/Verifikasi'
+import Rumah from './pages/Rumah'
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="/dasbor" element={<Dashboard />} />
         <Route path="/sensus" element={<Sensus />} />
         <Route path="/verifikasi" element={<Verifikasi />} />
+        <Route path="/rumah" element={<Rumah />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

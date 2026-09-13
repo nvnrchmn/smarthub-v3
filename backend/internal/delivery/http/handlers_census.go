@@ -3,6 +3,7 @@ package http
 import (
 	"io"
 	"log"
+	"strings"
 
 	"github.com/gofiber/fiber/v3"
 
@@ -198,4 +199,99 @@ func (s *Server) SetLifecycle(c fiber.Ctx) error {
 		return c.Status(code).JSON(fiber.Map{"error": msg})
 	}
 	return c.JSON(fiber.Map{"status": in.Status})
+}
+
+// UpdateUnit — PATCH /api/houses/:id
+func (s *Server) UpdateUnit(c fiber.Ctx) error {
+	var in struct {
+		Block  string `json:"block"`
+		Number string `json:"number"`
+		Status string `json:"status"`
+		Notes  string `json:"notes"`
+	}
+	if err := c.Bind().JSON(&in); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "data tidak valid"})
+	}
+	u, err := s.Census.UpdateUnit(c.Context(), s.subject(c), c.Params("id"), in.Block, in.Number, in.Status, in.Notes)
+	if err != nil {
+		code, msg := errStatus(err)
+		return c.Status(code).JSON(fiber.Map{"error": msg})
+	}
+	return c.JSON(u)
+}
+
+// DeleteUnit — DELETE /api/houses/:id
+func (s *Server) DeleteUnit(c fiber.Ctx) error {
+	if err := s.Census.DeleteUnit(c.Context(), s.subject(c), c.Params("id")); err != nil {
+		code, msg := errStatus(err)
+		return c.Status(code).JSON(fiber.Map{"error": msg})
+	}
+	return c.JSON(fiber.Map{"status": "terhapus"})
+}
+
+// EndOccupancy — POST /api/census/:id/occupancy/end
+func (s *Server) EndOccupancy(c fiber.Ctx) error {
+	if err := s.Census.EndOccupancy(c.Context(), s.subject(c), c.Params("id")); err != nil {
+		code, msg := errStatus(err)
+		return c.Status(code).JSON(fiber.Map{"error": msg})
+	}
+	return c.JSON(fiber.Map{"status": "hunian diakhiri"})
+}
+
+// FamilyCards — GET /api/family-cards
+func (s *Server) FamilyCards(c fiber.Ctx) error {
+	cards, err := s.Census.FamilyCards(c.Context(), s.subject(c))
+	if err != nil {
+		code, msg := errStatus(err)
+		return c.Status(code).JSON(fiber.Map{"error": msg})
+	}
+	return c.JSON(fiber.Map{"items": cards, "jumlah": len(cards)})
+}
+
+// CreateFamilyCard — POST /api/family-cards
+func (s *Server) CreateFamilyCard(c fiber.Ctx) error {
+	var in struct {
+		KKNumber string `json:"kk_number"`
+	}
+	_ = c.Bind().JSON(&in)
+	id, err := s.Census.CreateFamilyCard(c.Context(), s.subject(c), strings.TrimSpace(in.KKNumber))
+	if err != nil {
+		code, msg := errStatus(err)
+		return c.Status(code).JSON(fiber.Map{"error": msg})
+	}
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"id": id})
+}
+
+// AddFamilyMember — POST /api/family-cards/:id/members
+func (s *Server) AddFamilyMember(c fiber.Ctx) error {
+	var in struct {
+		ResidentID string `json:"resident_id"`
+	}
+	if err := c.Bind().JSON(&in); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "data tidak valid"})
+	}
+	if err := s.Census.AttachMember(c.Context(), s.subject(c), c.Params("id"), in.ResidentID); err != nil {
+		code, msg := errStatus(err)
+		return c.Status(code).JSON(fiber.Map{"error": msg})
+	}
+	return c.JSON(fiber.Map{"status": "anggota ditambahkan"})
+}
+
+// RemoveFamilyMember — DELETE /api/family-cards/:id/members/:memberId
+func (s *Server) RemoveFamilyMember(c fiber.Ctx) error {
+	if err := s.Census.DetachMember(c.Context(), s.subject(c), c.Params("id"), c.Params("memberId")); err != nil {
+		code, msg := errStatus(err)
+		return c.Status(code).JSON(fiber.Map{"error": msg})
+	}
+	return c.JSON(fiber.Map{"status": "anggota dikeluarkan"})
+}
+
+// FreeResidents — GET /api/census/free (warga yang belum punya KK)
+func (s *Server) FreeResidents(c fiber.Ctx) error {
+	items, err := s.Census.FreeResidents(c.Context(), s.subject(c))
+	if err != nil {
+		code, msg := errStatus(err)
+		return c.Status(code).JSON(fiber.Map{"error": msg})
+	}
+	return c.JSON(fiber.Map{"items": items, "jumlah": len(items)})
 }
