@@ -17,6 +17,7 @@ import (
 type Notifier interface {
 	SendOTP(phone, code, tenantName string) error
 	SendInviteLink(phone, link, tenantName string) error
+	SendTagihan(phone, pesan, tenantName string) error
 }
 
 type Auth struct {

@@ -45,6 +45,11 @@ func (s *Sender) SendOTP(phone, code, tenantName string) error {
 	return s.send(phone, msg)
 }
 
+// SendTagihan — pemberitahuan tagihan iuran bulanan.
+func (s *Sender) SendTagihan(phone, pesan, tenantName string) error {
+	return s.send(phone, pesan+tenantSuffix(tenantName))
+}
+
 // SendInviteLink — tautan aktivasi (berlaku 7 hari).
 func (s *Sender) SendInviteLink(phone, link, tenantName string) error {
 	msg := "Undangan Smarthub" + tenantSuffix(tenantName) + ": aktivasi akun Anda di " + link +

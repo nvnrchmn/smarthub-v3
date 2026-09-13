@@ -16,6 +16,7 @@ const (
 	ActionViewPII     Action = "VIEW_PII"
 	ActionVerifyPII   Action = "VERIFY_PII"
 	ActionManageUser  Action = "MANAGE_USER"
+	ActionManageBilling Action = "MANAGE_BILLING"
 	ActionEditProfile Action = "EDIT_PROFILE"
 )
 
@@ -108,6 +109,9 @@ func CanAccess(sub SubjectContext, res ResourceContext, act Action) bool {
 
 	case ActionManageUser:
 		return hasRole(sub, RoleTenantManager)
+	case ActionManageBilling:
+		// Bendahara pemegang kewenangan finansial; Ketua ikut mengawasi.
+		return hasRole(sub, RoleTreasurer, RoleTenantManager)
 	case ActionEditProfile:
 		// Sekretaris/pengelola mengurus sensus; warga hanya profilnya sendiri.
 		if hasRole(sub, RoleSecretary, RoleTenantManager) {

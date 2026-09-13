@@ -56,6 +56,16 @@ func errStatus(err error) (int, string) {
 		return fiber.StatusNotFound, "data tidak ditemukan"
 	case errors.Is(err, usecase.ErrConflict):
 		return fiber.StatusConflict, detail(err, "sudah terdaftar")
+	case errors.Is(err, usecase.ErrBillingForbidden):
+		return fiber.StatusForbidden, "tidak berhak atas data keuangan ini"
+	case errors.Is(err, usecase.ErrBillingNotFound):
+		return fiber.StatusNotFound, "tagihan tidak ditemukan"
+	case errors.Is(err, usecase.ErrSudahLunas):
+		return fiber.StatusConflict, "tagihan sudah lunas"
+	case errors.Is(err, usecase.ErrGatewayBelumAktif):
+		return fiber.StatusServiceUnavailable, "QRIS belum bisa diterbitkan: akun pembayaran belum diverifikasi. Sementara pakai kas tunai ke Bendahara."
+	case errors.Is(err, usecase.ErrBelumLunas):
+		return fiber.StatusConflict, "tagihan tidak bisa dibayar pada status ini"
 	}
 	// Galat tak terduga wajib tercatat: tanpa ini kegagalan 500 tak bisa dilacak.
 	log.Printf("ERROR internal: %v", err)

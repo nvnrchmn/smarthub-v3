@@ -9,6 +9,7 @@ import (
 	delivery "github.com/nvnrchmn/smarthub-v3/backend/internal/delivery/http"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/pkg/crypto"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/platform/notify"
+	"github.com/nvnrchmn/smarthub-v3/backend/internal/platform/hub"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/platform/storage"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/repository/postgres"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/usecase"
@@ -58,7 +59,14 @@ func main() {
 
 	census := &usecase.Census{Store: store, Storage: objStore}
 
-	srv := &delivery.Server{Auth: auth, Census: census}
+	billing := &usecase.Billing{Store: store, Hub: hub.New(), Notify: auth.Notify}
+	if billing.Hub.Enabled() {
+		log.Println("payment hub QRIS siap")
+	} else {
+		log.Println("PERINGATAN: payment hub QRIS belum dikonfigurasi (HUB_BASE_URL/HUB_INTERNAL_KEY)")
+	}
+
+	srv := &delivery.Server{Auth: auth, Census: census, Billing: billing}
 
 	log.Printf("smarthub-api listening on :%s", cfg.Port)
 	log.Fatal(srv.Router().Listen(":" + cfg.Port))

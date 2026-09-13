@@ -14,7 +14,8 @@ import (
 
 type Server struct {
 	Auth   *usecase.Auth
-	Census *usecase.Census
+	Census  *usecase.Census
+	Billing *usecase.Billing
 }
 
 // Auth — middleware: verifikasi JWT, lalu pastikan akun masih ACTIVE di database
@@ -86,6 +87,8 @@ func (s *Server) Router() *fiber.App {
 	auth.Post("/census/:id/documents/:kind", s.UploadDocument)
 	auth.Get("/census/:id/documents/:kind", s.DownloadDocument)
 	staff := RequireRoles(domain.RoleTenantManager, domain.RoleSecretary)
+	// Ketua (Tenant Manager) saja: persetujuan mutasi kas.
+	manager := RequireRoles(domain.RoleTenantManager)
 	auth.Get("/houses", staff, s.ListUnits)
 	auth.Post("/houses", staff, s.CreateUnit)
 	auth.Patch("/houses/:id", staff, s.UpdateUnit)
@@ -96,6 +99,21 @@ func (s *Server) Router() *fiber.App {
 	auth.Post("/family-cards", staff, s.CreateFamilyCard)
 	auth.Post("/family-cards/:id/members", staff, s.AddFamilyMember)
 	auth.Delete("/family-cards/:id/members/:memberId", staff, s.RemoveFamilyMember)
+
+	// Tagihan & kas: warga melihat tagihan unitnya, pengurus mengelola keuangan.
+	auth.Get("/billing/invoices", s.DaftarTagihan)
+	auth.Get("/billing/invoices/:id", s.DetailTagihan)
+	auth.Get("/billing/invoices/:id/qris", s.QRISCek)
+	auth.Post("/billing/invoices/:id/qris", s.QRISBuat)
+	auth.Post("/billing/invoices/:id/cash", s.CatatTunai)
+	auth.Get("/billing/fee-items", staff, s.MasterIuran)
+	auth.Post("/billing/fee-items", staff, s.SimpanIuran)
+	auth.Get("/billing/settings", staff, s.PengaturanTagihan)
+	auth.Post("/billing/settings", staff, s.SimpanPengaturanTagihan)
+	auth.Post("/billing/generate", staff, s.GenerateTagihan)
+	auth.Get("/billing/ledger", staff, s.BukuKas)
+	auth.Post("/billing/ledger/deposit", staff, s.SetorBank)
+	auth.Post("/billing/ledger/deposit/:grup/approve", manager, s.SetujuiSetoran)
 
 	return app
 }

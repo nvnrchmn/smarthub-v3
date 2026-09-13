@@ -8,9 +8,15 @@ import (
 	"os"
 	"strings"
 
+	"time"
+
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/db"
+	"github.com/nvnrchmn/smarthub-v3/backend/internal/domain"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/pkg/security"
+	"github.com/nvnrchmn/smarthub-v3/backend/internal/platform/hub"
+	"github.com/nvnrchmn/smarthub-v3/backend/internal/platform/notify"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/repository/postgres"
+	"github.com/nvnrchmn/smarthub-v3/backend/internal/usecase"
 )
 
 // smarthub-cli — tugas operasional yang sengaja TIDAK lewat API publik.
@@ -24,10 +30,12 @@ func main() {
 	fullName := flag.String("full-name", "", "nama lengkap pengelola")
 	password := flag.String("password", "", "kata sandi pengelola (min 8 karakter)")
 	adminDSN := flag.String("dsn", os.Getenv("ADMIN_DATABASE_URL"), "DSN admin (env ADMIN_DATABASE_URL)")
+	periode := flag.String("period", "", "periode tagihan YYYY-MM (kosong = bulan ini)")
+	paksa := flag.Bool("force", false, "abaikan tanggal terbit tenant")
 	flag.Parse()
 
-	if *cmd != "create-tenant" {
-		log.Fatal("perintah tidak dikenal; pakai -cmd create-tenant")
+	if *cmd != "create-tenant" && *cmd != "generate-invoices" {
+		log.Fatal("perintah tidak dikenal; pakai -cmd create-tenant | generate-invoices")
 	}
 	if *name == "" || *slug == "" || *email == "" || len(*password) < 8 || *adminDSN == "" {
 		log.Fatal("wajib: -name -slug -email -password(min 8) dan ADMIN_DATABASE_URL")
@@ -46,9 +54,49 @@ func main() {
 		*fullName = *email
 	}
 	store := postgres.New(db.Pool)
+	if *cmd == "generate-invoices" {
+		generateInvoices(store, *periode, *paksa)
+		return
+	}
 	tenantID, userID, err := store.CreateTenantWithManager(ctx, *name, strings.ToLower(*slug), *email, hash, *fullName)
 	if err != nil {
 		log.Fatalf("gagal membuat tenant: %v", err)
 	}
 	fmt.Printf("tenant dibuat: %s (%s)\npengelola: %s\n", *name, tenantID, userID)
+}
+
+// generateInvoices — dipanggil cron harian: menerbitkan tagihan untuk tenant
+// yang tanggal terbitnya jatuh hari ini (atau semua bila -force).
+func generateInvoices(store *postgres.Store, periode string, paksa bool) {
+	ctx := context.Background()
+	daftar, err := store.Tenants(ctx)
+	if err != nil {
+		log.Fatalf("daftar tenant: %v", err)
+	}
+	if periode == "" {
+		periode = time.Now().Format("2006-01")
+	}
+	hariIni := time.Now().Day()
+	sub := &domain.SubjectContext{AppRoles: []string{domain.RoleTreasurer}}
+	notifier := notify.New()
+	for _, t := range daftar {
+		// Konteks tenant dipasang agar RLS tetap berlaku untuk operasi tulis.
+		hari, _, err := store.BillingSettings(ctx, t.ID)
+		if err != nil {
+			log.Printf("tenant %s: pengaturan gagal: %v", t.Nama, err)
+			continue
+		}
+		if !paksa && hari != hariIni {
+			continue
+		}
+		sub.TenantID = t.ID
+		b := &usecase.Billing{Store: store, Hub: hub.New(), Notify: notifier}
+		hasil, err := b.GenerateBulanan(ctx, sub, periode)
+		if err != nil {
+			log.Printf("tenant %s: %v", t.Nama, err)
+			continue
+		}
+		fmt.Printf("%s periode %s: dibuat=%d dilewati=%d unit=%d wa_ok=%d wa_gagal=%d\n",
+			t.Nama, hasil.Periode, hasil.Dibuat, hasil.Dilewati, hasil.Ditagih, hasil.TerkirimWA, hasil.GagalWA)
+	}
 }
