@@ -63,7 +63,7 @@ func errStatus(err error) (int, string) {
 	case errors.Is(err, usecase.ErrSudahLunas):
 		return fiber.StatusConflict, "tagihan sudah lunas"
 	case errors.Is(err, usecase.ErrGatewayBelumAktif):
-		return fiber.StatusServiceUnavailable, "QRIS belum bisa diterbitkan: akun pembayaran belum diverifikasi. Sementara pakai kas tunai ke Bendahara."
+		return fiber.StatusServiceUnavailable, "QRIS belum aktif: kunci Xendit di hub masih mode uji (kunci kembali placeholder). Isi kunci produksi di pengaturan hub, lalu coba lagi. Sementara pakai kas tunai ke Bendahara."
 	case errors.Is(err, usecase.ErrGatewaySementara):
 		return fiber.StatusServiceUnavailable, "gateway pembayaran sedang bermasalah, coba lagi sebentar lagi."
 	case errors.Is(err, usecase.ErrBelumLunas):
