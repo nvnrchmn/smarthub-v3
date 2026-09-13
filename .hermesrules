@@ -70,6 +70,13 @@
 - Bukti: `go test ./...` hijau (3 tes baru: gerbang peran, periode tidak valid, isi CSV); uji produksi Playwright: login → `/dasbor`, menu tampil (Dasbor/Tagihan/Keuangan/Laporan/Rumah/Sensus), `/laporan` menampilkan Rp275.000 + Iuran IPL/KEAMANAN/SAMPAH, unduh PDF 2.124 byte, tombol "Kirim ke pengurus" menjawab jelas saat belum ada nomor pengurus. Screenshot `/tmp/sbverify/50-laporan.png`.
 - SISA: pengurus belum punya nomor WhatsApp (`users.phone` kosong) → isi di menu Tim supaya kirim laporan jalan; kolom "Kepala keluarga" kosong kalau unit tak punya okupansi aktif terverifikasi; tema masih terang (belum pakai mode gelap).
 
+## Audit + hardening batch 1 (14 Sep 2026, commit `add5c28`)
+- Audit penuh 13 Sep: temuan utama = token di localStorage, 1 JWT_SECRET untuk 2 realm, tanpa pencabutan token, bcrypt cost 10, tanpa 2FA, port 8082 bind 0.0.0.0, cakupan tes SQL nol.
+- ✅ #1 bind API: tambah `HOST` config (default 127.0.0.1) + `Listen(cfg.Host+":"+cfg.Port)`. Terverifikasi `ss`: 127.0.0.1:8082 (bukan 0.0.0.0), publik root/health tetap 200.
+- ✅ #2 tes integrasi `reports_test.go`: seed tenant/user/unit/invoice dalam transaksi (RLS + set_config is_local=true), skip otomatis bila `TEST_DATABASE_URL` kosong (CI aman). MENANGKAP BUG PRODUKSI: `reports.go` `status='active'` → harus `'ACTIVE'` (tombol "Kirim WA ke pengurus" sebelumnya selalu kosong). Diperbaiki.
+- Cara jalankan: `sudo createdb smarthub_test` + migrasi, lalu `TEST_DATABASE_URL=... go test ./internal/repository/postgres/ -run TestReportsIntegration -v`.
+- SISA (prioritas): #3 pisah secret superadmin, #4 pindah dari localStorage ke httpOnly cookie, #5 2FA+bscrypt 12, #6 wire tes DB ke CI (service postgres).
+
 --- ARSIP ---
 
 ## Status 13 Sep 2026 — Fase 0 SELESAI (fondasi)
