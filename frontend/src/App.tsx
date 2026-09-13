@@ -10,7 +10,6 @@ import Tagihan from './pages/Tagihan'
 import Keuangan from './pages/Keuangan'
 import SuperadminLogin from './pages/SuperadminLogin'
 import SuperadminDasbor from './pages/SuperadminDasbor'
-import Settings from './pages/Settings'
 
 export default function App() {
   return (
@@ -25,7 +24,6 @@ export default function App() {
         <Route path="/rumah" element={<Rumah />} />
         <Route path="/superadmin" element={<SuperadminLogin />} />
         <Route path="/superadmin/dasbor" element={<SuperadminDasbor />} />
-        <Route path="/admin/settings" element={<Settings />} />
         <Route path="/tagihan" element={<Tagihan />} />
         <Route path="/keuangan" element={<Keuangan />} />
         <Route path="*" element={<Navigate to="/" replace />} />

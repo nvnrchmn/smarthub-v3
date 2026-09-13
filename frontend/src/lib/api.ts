@@ -340,8 +340,10 @@ export const superadmin = {
     return r.superadmin
   },
   me: () => request<SuperadminMe>('/superadmin/me'),
-  listTenants: () => request<TenantList[]>('/superadmin/tenants'),
-  auditLog: () => request<AuditLogEntry[]>('/superadmin/audit-log'),
+  // Backend mengembalikan {items, jumlah}; UI hanya butuh arraynya.
+  listTenants: async () => (await request<{ items: TenantList[] | null }>('/superadmin/tenants')).items ?? [],
+  auditLog: async () => (await request<{ items: AuditLogEntry[] | null }>('/superadmin/audit-log')).items ?? [],
+  allSettings: async () => (await request<{ items: Record<string, string> | null }>('/superadmin/settings')).items ?? {},
   resetPassword: (oldPw: string, newPw: string) =>
     request<{ status: string }>('/superadmin/reset-password', { method: 'POST', body: JSON.stringify({ old_password: oldPw, new_password: newPw }) }),
   getSetting: async (key: string) => {

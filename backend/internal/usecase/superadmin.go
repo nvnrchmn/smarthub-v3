@@ -15,8 +15,10 @@ type Superadmin struct {
 
 func (s *Superadmin) Login(ctx context.Context, email, password string) (*domain.Superadmin, error) {
 	email = strings.TrimSpace(strings.ToLower(email))
-	if email == "" || len(password) < 8 {
-		return nil, ErrInvalidInput
+	if email == "" || password == "" {
+		// Sengaja pakai ErrCredentials (401), bukan 400: login tidak boleh
+		// membocorkan aturan format kata sandi lewat kode status.
+		return nil, ErrCredentials
 	}
 	sa, err := s.Store.SuperadminByEmail(ctx, email)
 	if err != nil {
@@ -60,6 +62,11 @@ func (s *Superadmin) AuditLog(ctx context.Context) ([]domain.AuditLog, error) {
 
 func (s *Superadmin) GetSetting(ctx context.Context, key string) (string, error) {
 	return s.Store.GetSetting(ctx, key)
+}
+
+// AllSettings — semua pengaturan global sekaligus (untuk halaman Pengaturan).
+func (s *Superadmin) AllSettings(ctx context.Context) (map[string]string, error) {
+	return s.Store.AllSettings(ctx)
 }
 
 func (s *Superadmin) SetSetting(ctx context.Context, key, value string) error {

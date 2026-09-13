@@ -97,6 +97,13 @@ func (s *Server) Router() *fiber.App {
 
 	api := app.Group("/api")
 	public := limiter.New(limiter.Config{Max: 15, Expiration: time.Minute})
+	api.Post("/superadmin/login", public, s.SuperadminLogin)
+	api.Get("/superadmin/me", s.RequireSuperadmin(), s.SuperadminMe)
+	api.Get("/superadmin/tenants", s.RequireSuperadmin(), s.SuperadminTenants)
+	api.Get("/superadmin/audit-log", s.RequireSuperadmin(), s.SuperadminAuditLog)
+	api.Get("/superadmin/settings", s.RequireSuperadmin(), s.SuperadminSettings)
+	api.Post("/superadmin/settings", s.RequireSuperadmin(), s.SuperadminUpdateSetting)
+	api.Post("/superadmin/reset-password", s.RequireSuperadmin(), s.SuperadminResetPassword)
 	api.Post("/auth/login", public, s.Login)
 	api.Post("/auth/invite/accept", public, s.AcceptInvite)
 	api.Post("/auth/invite/resend-otp", public, s.ResendOTP)
@@ -145,29 +152,6 @@ func (s *Server) Router() *fiber.App {
 	auth.Get("/billing/ledger", staff, s.BukuKas)
 	auth.Post("/billing/ledger/deposit", staff, s.SetorBank)
 	auth.Post("/billing/ledger/deposit/:grup/approve", manager, s.SetujuiSetoran)
-
-	// SUPERADMIN: akses global platform.
-	superadminGroup := api.Group("/superadmin")
-	publicSuper := limiter.New(limiter.Config{Max: 10, Expiration: time.Minute})
-	superadminGroup.Post("/login", publicSuper, s.SuperadminLogin)
-	superadminAuth := superadminGroup.Group("", s.RequireSuperadmin())
-	superadminAuth.Get("/tenants", s.SuperadminTenants)
-	superadminAuth.Get("/audit-log", s.SuperadminAuditLog)
-	superadminAuth.Get("/settings", s.SuperadminSettings)
-	superadminAuth.Post("/settings", s.SuperadminUpdateSetting)
-	superadminAuth.Post("/reset-password", s.SuperadminResetPassword)
-
-
-	// Superadmin: prefix /api/superadmin (auth terpisah, token khusus).
-	sa := api.Group("/superadmin")
-	sa.Post("/login", public, s.SuperadminLogin)
-	saAuth := sa.Group("", s.RequireSuperadmin())
-	saAuth.Get("/me", s.SuperadminMe)
-	saAuth.Get("/tenants", s.SuperadminTenants)
-	saAuth.Get("/audit-log", s.SuperadminAuditLog)
-	saAuth.Get("/settings", s.SuperadminSettings)
-	saAuth.Post("/settings", s.SuperadminUpdateSetting)
-	saAuth.Post("/reset-password", s.SuperadminResetPassword)
 
 	return app
 }

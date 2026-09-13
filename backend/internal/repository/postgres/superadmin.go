@@ -58,6 +58,24 @@ func (s *Store) SetSetting(ctx context.Context, key, value string) error {
 	return err
 }
 
+// AllSettings — baca semua pengaturan global (key -> value).
+func (s *Store) AllSettings(ctx context.Context) (map[string]string, error) {
+	rows, err := s.Pool.Query(ctx, `select key, value from settings order by key`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var k, v string
+		if err := rows.Scan(&k, &v); err != nil {
+			return nil, err
+		}
+		out[k] = v
+	}
+	return out, rows.Err()
+}
+
 // SuperadminByID — ambil superadmin by ID.
 func (s *Store) SuperadminByID(ctx context.Context, id string) (*domain.Superadmin, error) {
 	var sa domain.Superadmin
@@ -80,38 +98,53 @@ func (s *Store) CreateSuperadmin(ctx context.Context, email, fullName, hash stri
 }
 
 // Tenants — ambil seluruh tenant (manajemen platform).
+//
+// Lewat WithSuperadmin: RLS tenants hanya membuka baris milik tenant aktif,
+// jadi tanpa GUC app.superadmin daftar ini selalu kosong.
 func (s *Store) AllTenants(ctx context.Context) ([]domain.Tenant, error) {
-	rows, err := s.Pool.Query(ctx, `select id, name, slug, status, created_at from tenants order by created_at desc`)
+	var out []domain.Tenant
+	err := s.WithSuperadmin(ctx, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, `select id, name, slug, status, created_at from tenants order by created_at desc`)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var t domain.Tenant
+			if err := rows.Scan(&t.ID, &t.Name, &t.Slug, &t.Status, &t.CreatedAt); err != nil {
+				return err
+			}
+			out = append(out, t)
+		}
+		return rows.Err()
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	var out []domain.Tenant
-	for rows.Next() {
-		var t domain.Tenant
-		if err := rows.Scan(&t.ID, &t.Name, &t.Slug, &t.Status, &t.CreatedAt); err != nil {
-			return nil, err
-		}
-		out = append(out, t)
-	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // AuditLogGlobal — ambil audit_logs dari SEMUA tenant (superadmin only).
 func (s *Store) AuditLogGlobal(ctx context.Context, limit int) ([]domain.AuditLog, error) {
-	rows, err := s.Pool.Query(ctx, `select id, tenant_id, action, entity, entity_id, detail, created_at
-		from audit_logs order by created_at desc limit $1`, limit)
+	var out []domain.AuditLog
+	err := s.WithSuperadmin(ctx, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, `select id, tenant_id, action, entity, entity_id, detail, created_at
+			from audit_logs order by created_at desc limit $1`, limit)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var a domain.AuditLog
+			if err := rows.Scan(&a.ID, &a.TenantID, &a.Action, &a.Entity, &a.EntityID, &a.Detail, &a.CreatedAt); err != nil {
+				return err
+			}
+			out = append(out, a)
+		}
+		return rows.Err()
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	var out []domain.AuditLog
-	for rows.Next() {
-		var a domain.AuditLog
-		if err := rows.Scan(&a.ID, &a.TenantID, &a.Action, &a.Entity, &a.EntityID, &a.Detail, &a.CreatedAt); err != nil {
-			return nil, err
-		}
-		out = append(out, a)
-	}
-	return out, rows.Err()
+	return out, nil
 }

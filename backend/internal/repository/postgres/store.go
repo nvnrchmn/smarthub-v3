@@ -44,6 +44,27 @@ func (s *Store) WithTenant(ctx context.Context, tenantID string, fn func(pgx.Tx)
 	return tx.Commit(ctx)
 }
 
+// WithSuperadmin menjalankan fn di dalam transaksi dengan app.superadmin='on'.
+//
+// Dipakai HANYA untuk operasi tingkat platform (daftar seluruh tenant, audit
+// log global). Policy RLS *_superadmin (migrasi 0008) yang membukanya, dan
+// hanya untuk tabel tenants + audit_logs.
+func (s *Store) WithSuperadmin(ctx context.Context, fn func(pgx.Tx) error) error {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, "select set_config('app.superadmin', 'on', true)"); err != nil {
+		return err
+	}
+	if err := fn(tx); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 // LookupUserByEmail — dipakai login; lewat fungsi SECURITY DEFINER karena belum
 // ada konteks tenant pada saat itu.
 func (s *Store) LookupUserByEmail(ctx context.Context, email string) (*domain.User, error) {

@@ -1,6 +1,7 @@
 package http
 
 import (
+	"log"
 
 	"github.com/gofiber/fiber/v3"
 
@@ -27,6 +28,7 @@ func (s *Server) SuperadminLogin(c fiber.Ctx) error {
 	}
 	sa, err := s.Superadmin.Login(c.Context(), in.Email, in.Password)
 	if err != nil {
+		log.Printf("[superadmin] login gagal untuk %s: %v", in.Email, err)
 		code, msg := errStatus(err)
 		return c.Status(code).JSON(fiber.Map{"error": msg})
 	}
@@ -35,7 +37,7 @@ func (s *Server) SuperadminLogin(c fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal menerbitkan token"})
 	}
-	return c.JSON(fiber.Map{"token": tok, "admin": fiber.Map{"id": sa.ID, "email": sa.Email, "full_name": sa.FullName}})
+	return c.JSON(fiber.Map{"token": tok, "superadmin": fiber.Map{"id": sa.ID, "email": sa.Email, "full_name": sa.FullName, "role": domain.RoleSuperadmin}})
 }
 
 // SuperadminMe — profil superadmin.
@@ -45,7 +47,7 @@ func (s *Server) SuperadminMe(c fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal memuat profil"})
 	}
-	return c.JSON(fiber.Map{"id": sa.ID, "email": sa.Email, "full_name": sa.FullName})
+	return c.JSON(fiber.Map{"id": sa.ID, "email": sa.Email, "full_name": sa.FullName, "role": domain.RoleSuperadmin})
 }
 
 // SuperadminTenants — daftar semua tenant.
@@ -88,7 +90,14 @@ func (s *Server) SuperadminAuditLog(c fiber.Ctx) error {
 func (s *Server) SuperadminSettings(c fiber.Ctx) error {
 	key := c.Query("key")
 	if key == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "key wajib"})
+		// Tanpa ?key → kembalikan semua pengaturan (halaman Pengaturan
+		// memuat sekaligus: kunci Xendit, dsb).
+		all, err := s.Superadmin.AllSettings(c.Context())
+		if err != nil {
+			code, msg := errStatus(err)
+			return c.Status(code).JSON(fiber.Map{"error": msg})
+		}
+		return c.JSON(fiber.Map{"items": all})
 	}
 	val, err := s.Superadmin.GetSetting(c.Context(), key)
 	if err != nil {
