@@ -36,3 +36,22 @@
 4. Tagihan & pembayaran: invoice per unit, QRIS dinamis + webhook, kuitansi, buku kas tunai.
 5. Persuratan, forum, lapak warga, laporan + SSE.
 6. Uji: unit test policy & enkripsi, integration test RLS, E2E alur iuran.
+## Status 13 Sep 2026 — Fase 2 SELESAI (sensus warga)
+- Skema ERD: house_units, family_cards, resident_profiles, house_occupancies (migrasi 0004,
+  idempoten, RLS aktif di 8 tabel). NIK & nomor KK = AES-256-GCM dgn AAD tenant_id; daftar
+  memakai nik_last4 sehingga tidak perlu dekripsi untuk menampilkan.
+- Berkas KTP/KK -> bucket privat MinIO; keluar hanya lewat API setelah cek ABAC + audit.
+- Audit: CENSUS_SUBMIT, PII_VIEW, PII_ACCESS_DENIED, DOCUMENT_UPLOAD/VIEW, CENSUS_VERIFY,
+  CENSUS_REJECT, HOUSE_UNIT_CREATE (42 baris dari uji, sengaja disimpan).
+- Uji: 11 pemeriksaan API + 13 pemeriksaan UI (Playwright, 2 sesi) LOLOS. Bukti kunci: ciphertext
+  44 byte tanpa teks NIK; reveal NIK cocok; unduh dokumen sha256 identik; warga 403 di
+  daftar/verify/rumah & profil warga lain; setujui ditolak bila KTP/KK kurang.
+- 6 bug ditemukan & diperbaiki saat uji: RETURNING dgn kolom join; Fiber v3 Bind().JSON();
+  tag JSON ProfileInput; objek MinIO ditutup sebelum body terkirim (502); email duplikat 23505
+  -> 409; urutan argumen Encrypt/Decrypt (2 lolos kompilasi). Ditambah: log galat 500.
+- UI: /sensus (warga) & /verifikasi (pengurus). Palet = logikraf.id (#0052FF, #10B981);
+  motion lambat terverifikasi (kartu 0.6s decelerate, tombol 0.4s, stagger 0.6s).
+- UIUX.md diperbarui di ~/Projects/smarthub-v3-docs (belum disalin ke Issue repo).
+- Commit: 93c407b (sensus) + 34dd51a, 4475a01 (perbaikan UI). SISA: bersih dari data uji;
+  unit rumah A-01 dari uji masih ada; tabel audit tidak boleh diubah (append-only).
+- Berikutnya: tagihan iuran + QRIS dinamis, kas tunai, tata kelola rumah/KK, persuratan.
