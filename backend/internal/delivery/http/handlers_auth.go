@@ -64,6 +64,8 @@ func errStatus(err error) (int, string) {
 		return fiber.StatusConflict, "tagihan sudah lunas"
 	case errors.Is(err, usecase.ErrGatewayBelumAktif):
 		return fiber.StatusServiceUnavailable, "QRIS belum bisa diterbitkan: akun pembayaran belum diverifikasi. Sementara pakai kas tunai ke Bendahara."
+	case errors.Is(err, usecase.ErrGatewaySementara):
+		return fiber.StatusServiceUnavailable, "gateway pembayaran sedang bermasalah, coba lagi sebentar lagi."
 	case errors.Is(err, usecase.ErrBelumLunas):
 		return fiber.StatusConflict, "tagihan tidak bisa dibayar pada status ini"
 	}

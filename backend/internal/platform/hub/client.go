@@ -24,6 +24,9 @@ var ErrQRISTidakSah = errors.New("qr_string dari hub tidak sah")
 // ErrGatewayBermasalah — hub membalas galat server (akun pembayaran belum siap, dsb).
 var ErrGatewayBermasalah = errors.New("gateway pembayaran sedang bermasalah")
 
+// ErrSudahDibayar — hub menolak karena pembayaran referensi ini sudah lunas (409).
+var ErrSudahDibayar = errors.New("pembayaran sudah lunas di gateway")
+
 type Client struct {
 	base   string
 	key    string
@@ -86,6 +89,9 @@ func (c *Client) CreateQRIS(ctx context.Context, externalID string, amount float
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode >= 500 {
 		return nil, fmt.Errorf("%w (%d): %s", ErrGatewayBermasalah, resp.StatusCode, strings.TrimSpace(string(raw)))
+	}
+	if resp.StatusCode == http.StatusConflict {
+		return nil, fmt.Errorf("%w: %s", ErrSudahDibayar, strings.TrimSpace(string(raw)))
 	}
 	if resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("hub menolak (%d): %s", resp.StatusCode, strings.TrimSpace(string(raw)))

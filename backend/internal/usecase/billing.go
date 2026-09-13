@@ -22,6 +22,7 @@ var (
 	ErrSudahLunas       = errors.New("tagihan sudah lunas")
 	ErrBelumLunas       = errors.New("tagihan belum lunas")
 	ErrGatewayBelumAktif = errors.New("QRIS belum bisa diterbitkan: akun pembayaran belum aktif")
+	ErrGatewaySementara  = errors.New("gateway pembayaran sedang bermasalah, coba lagi sebentar lagi")
 )
 
 // Billing — tagihan iuran: pembuatan bulanan, QRIS, kas tunai, buku kas.
@@ -218,9 +219,17 @@ func (b *Billing) BuatQRIS(ctx context.Context, sub *domain.SubjectContext, invo
 		}
 		resp, err := b.Hub.CreateQRIS(ctx, b.Hub.ExternalID(inv.InvoiceNumber), inv.TotalAmount,
 			"Iuran "+inv.Period+" "+inv.HouseUnit)
+		if errors.Is(err, hub.ErrSudahDibayar) {
+			// Hub sudah menerima pembayaran untuk referensi ini — selaraskan status kita.
+			log.Printf("[billing] hub: %s sudah lunas, sinkron status", inv.InvoiceNumber)
+			if _, _, e := b.CekQRIS(ctx, sub, invoiceID); e != nil {
+				log.Printf("[billing] sinkron setelah 409 gagal: %v", e)
+			}
+			return nil, ErrSudahLunas
+		}
 		if errors.Is(err, hub.ErrGatewayBermasalah) {
-			log.Printf("[billing] gateway menolak pembuatan QRIS untuk %s: %v", inv.InvoiceNumber, err)
-			return nil, ErrGatewayBelumAktif
+			log.Printf("[billing] gateway bermasalah saat membuat QRIS %s: %v", inv.InvoiceNumber, err)
+			return nil, ErrGatewaySementara
 		}
 		if errors.Is(err, hub.ErrQRISTidakSah) {
 			// Menolak menampilkan QR palsu ke warga lebih baik daripada QRIS gagal scan.
