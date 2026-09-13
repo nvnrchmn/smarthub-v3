@@ -77,6 +77,15 @@
 - Cara jalankan: `sudo createdb smarthub_test` + migrasi, lalu `TEST_DATABASE_URL=... go test ./internal/repository/postgres/ -run TestReportsIntegration -v`.
 - SISA (prioritas): #3 pisah secret superadmin, #4 pindah dari localStorage ke httpOnly cookie, #5 2FA+bscrypt 12, #6 wire tes DB ke CI (service postgres).
 
+## Kuota storage GitHub Actions (14 Sep 2026, commit `add5c28`+)
+- Gejala: alert "0.5 GB Actions storage 100% terpakai". Penyebab: artefak menumpuk (retensi default repo = **90 hari**).
+- Temuan: total artefak+cache akun ±1,6 GB — LogikaKreatifIndonesia 577 MB, lemburin 532 MB (426 MB cache), smarthub-v3 173 MB, MysticGlide 137 MB, logikraf-partners 129 MB.
+- ✅ Bersih: 262 artefak + 2 cache dihapus via API → total storage **0 MB**.
+- ✅ Retensi "artifact and log retention" diset **1 hari** di 15 repo (API: `PUT /repos/{o}/{r}/actions/permissions/artifact-and-log-retention -F days=1`; pakai `-F` bukan `-f`, karena `days` harus integer).
+- ✅ Workflow smarthub-v3: build+deploy digabung jadi SATU job (`build-and-deploy`) → **nol artefak**; `cache: false` di setup-go (cache Go ikut makan kuota).
+- ATURAN BARU: workflow baru JANGAN pakai `upload-artifact` hanya untuk memindahkan berkas antar-job — gabung jobnya. Kalau artefak memang perlu, set `retention-days: 1`.
+- BELUM: LogikaKreatifIndonesia & logikraf-partners masih pakai artefak antar-job (retensi 1 hari sudah menahan, tapi belum nol) — perlu keputusan karena itu jalur deploy app live.
+
 --- ARSIP ---
 
 ## Status 13 Sep 2026 — Fase 0 SELESAI (fondasi)
