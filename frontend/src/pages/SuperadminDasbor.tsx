@@ -2,6 +2,14 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { superadmin, type AuditLogEntry, type TenantList } from '../lib/api'
 
+// Tanggal ringkas ala Indonesia: 13 Sep 2026, 07:44.
+function tgl(iso?: string) {
+  if (!iso) return '-'
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return iso
+  return d.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
 export default function SuperadminDasbor() {
   const nav = useNavigate()
   const [tenants, setTenants] = useState<TenantList[]>([])
@@ -109,7 +117,7 @@ export default function SuperadminDasbor() {
                             {t.status}
                           </span>
                         </td>
-                        <td className="py-2 text-ink2">{t.created_at}</td>
+                        <td className="py-2 text-ink2">{tgl(t.created_at)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -141,7 +149,7 @@ export default function SuperadminDasbor() {
                         <td className="py-2 text-ink2">{a.tenant_id}</td>
                         <td className="py-2">{a.action}</td>
                         <td className="py-2 text-ink2">{a.entity}{a.entity_id ? `/${a.entity_id}` : ''}</td>
-                        <td className="py-2 text-ink2">{a.created_at}</td>
+                        <td className="py-2 text-ink2">{tgl(a.created_at)}</td>
                       </tr>
                     ))}
                   </tbody>
