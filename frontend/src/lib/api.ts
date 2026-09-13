@@ -320,3 +320,34 @@ export const billing = {
 }
 
 export const BILLING_STAFF_ROLES = ['TENANT_MANAGER', 'TREASURER']
+
+// ---- Superadmin (Fase 4) ----
+export type SuperadminMe = { id: string; email: string; full_name: string; role: string }
+export type TenantList = { id: string; name: string; slug: string; status: string; created_at: string }
+export type AuditLogEntry = { id: number; tenant_id: string; actor_id?: string; action: string; entity?: string; entity_id?: string; detail?: any; created_at: string }
+
+export const superadmin = {
+  TOKEN_KEY: 'smarthub.superadmin.token',
+  get: () => localStorage.getItem(superadmin.TOKEN_KEY),
+  set: (t: string) => localStorage.setItem(superadmin.TOKEN_KEY, t),
+  clear: () => localStorage.removeItem(superadmin.TOKEN_KEY),
+  login: async (email: string, password: string) => {
+    const r = await request<{ token: string; superadmin: SuperadminMe }>('/superadmin/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    })
+    superadmin.set(r.token)
+    return r.superadmin
+  },
+  me: () => request<SuperadminMe>('/superadmin/me'),
+  listTenants: () => request<TenantList[]>('/superadmin/tenants'),
+  auditLog: () => request<AuditLogEntry[]>('/superadmin/audit-log'),
+  resetPassword: (oldPw: string, newPw: string) =>
+    request<{ status: string }>('/superadmin/reset-password', { method: 'POST', body: JSON.stringify({ old_password: oldPw, new_password: newPw }) }),
+  getSetting: async (key: string) => {
+    const r = await request<{ key: string; value: string }>(`/superadmin/settings?key=${encodeURIComponent(key)}`)
+    return r
+  },
+  setSetting: (key: string, value: string) =>
+    request<{ status: string }>('/superadmin/settings', { method: 'POST', body: JSON.stringify({ key, value }) }),
+}

@@ -66,7 +66,14 @@ func main() {
 		log.Println("PERINGATAN: payment hub QRIS belum dikonfigurasi (HUB_BASE_URL/HUB_INTERNAL_KEY)")
 	}
 
-	srv := &delivery.Server{Auth: auth, Census: census, Billing: billing}
+	superadmin := &usecase.Superadmin{Store: store}
+
+	srv := &delivery.Server{
+		Auth:       auth,
+		Census:     census,
+		Billing:    billing,
+		Superadmin: superadmin,
+	}
 
 	log.Printf("smarthub-api listening on :%s", cfg.Port)
 	log.Fatal(srv.Router().Listen(":" + cfg.Port))

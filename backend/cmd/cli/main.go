@@ -34,8 +34,8 @@ func main() {
 	paksa := flag.Bool("force", false, "abaikan tanggal terbit tenant")
 	flag.Parse()
 
-	if *cmd != "create-tenant" && *cmd != "generate-invoices" {
-		log.Fatal("perintah tidak dikenal; pakai -cmd create-tenant | generate-invoices")
+	if *cmd != "create-tenant" && *cmd != "generate-invoices" && *cmd != "bootstrap-superadmin" {
+		log.Fatal("perintah tidak dikenal; pakai -cmd create-tenant | generate-invoices | bootstrap-superadmin")
 	}
 	// Argumen ini hanya wajib untuk pembuatan tenant, bukan untuk tugas cron.
 	if *cmd == "create-tenant" && (*name == "" || *slug == "" || *email == "" || len(*password) < 8 || *adminDSN == "") {
@@ -57,6 +57,21 @@ func main() {
 	store := postgres.New(db.Pool)
 	if *cmd == "generate-invoices" {
 		generateInvoices(store, *periode, *paksa)
+		return
+	}
+	if *cmd == "bootstrap-superadmin" {
+		if *email == "" || len(*password) < 8 || *fullName == "" {
+			log.Fatal("wajib: -email -full-name -password (min 8)")
+		}
+		hash, err := security.HashPassword(*password)
+		if err != nil {
+			log.Fatal(err)
+		}
+		id, err := store.CreateSuperadmin(context.Background(), *email, *fullName, hash)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("superadmin dibuat: %s (%s)\n", *email, id)
 		return
 	}
 	tenantID, userID, err := store.CreateTenantWithManager(ctx, *name, strings.ToLower(*slug), *email, hash, *fullName)

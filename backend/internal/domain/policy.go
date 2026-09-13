@@ -6,18 +6,21 @@ const (
 	RoleSecretary     = "SECRETARY"
 	RoleTreasurer     = "TREASURER"
 	RoleTenantManager = "TENANT_MANAGER"
+	RoleSuperadmin    = "SUPERADMIN"
 )
 
 type Action string
 
 const (
-	ActionViewInvoice Action = "VIEW_INVOICE"
-	ActionPayInvoice  Action = "PAY_INVOICE"
-	ActionViewPII     Action = "VIEW_PII"
-	ActionVerifyPII   Action = "VERIFY_PII"
-	ActionManageUser  Action = "MANAGE_USER"
-	ActionManageBilling Action = "MANAGE_BILLING"
-	ActionEditProfile Action = "EDIT_PROFILE"
+	ActionViewInvoice     Action = "VIEW_INVOICE"
+	ActionPayInvoice      Action = "PAY_INVOICE"
+	ActionViewPII         Action = "VIEW_PII"
+	ActionVerifyPII       Action = "VERIFY_PII"
+	ActionManageUser      Action = "MANAGE_USER"
+	ActionManageBilling   Action = "MANAGE_BILLING"
+	ActionEditProfile     Action = "EDIT_PROFILE"
+	ActionManagePlatform  Action = "MANAGE_PLATFORM"
+	ActionViewAuditLog    Action = "VIEW_AUDIT_LOG"
 )
 
 // SubjectContext — siapa yang meminta akses.
@@ -76,12 +79,25 @@ func ownsFamilyCard(sub SubjectContext, fcID string) bool {
 // CanAccess — evaluator ABAC. Default MENOLAK: setiap aksi harus punya alasan
 // eksplisit untuk diizinkan. Akun yang belum ACTIVE tidak boleh apa pun.
 func CanAccess(sub SubjectContext, res ResourceContext, act Action) bool {
-	// 1. Batas tenant: ditegakkan lebih dulu, apa pun perannya.
-	if sub.TenantID == "" || sub.TenantID != res.TenantID {
+	// 1. Siklus hidup akun (sebelum pengecualian superadmin, agar akun suspended
+	//    tidak bisa apa pun).
+	if sub.LifecycleStatus != "ACTIVE" {
 		return false
 	}
-	// 2. Siklus hidup akun.
-	if sub.LifecycleStatus != "ACTIVE" {
+
+	// 2. SUPERADMIN: akses global untuk manajemen platform & audit log, TIDAK untuk
+	//    PII kependudukan privat (sesuai PRD: "Tidak memiliki visibilitas ke data
+	//    kependudukan privat").
+	if hasRole(sub, RoleSuperadmin) {
+		switch act {
+		case ActionViewAuditLog, ActionManagePlatform:
+			return true
+		}
+		return false
+	}
+
+	// 3. Batas tenant: ditegakkan untuk peran selain superadmin.
+	if sub.TenantID == "" || sub.TenantID != res.TenantID {
 		return false
 	}
 

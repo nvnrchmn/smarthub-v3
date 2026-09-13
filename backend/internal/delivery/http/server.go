@@ -14,9 +14,10 @@ import (
 )
 
 type Server struct {
-	Auth   *usecase.Auth
-	Census  *usecase.Census
-	Billing *usecase.Billing
+	Auth        *usecase.Auth
+	Census      *usecase.Census
+	Billing     *usecase.Billing
+	Superadmin  *usecase.Superadmin
 }
 
 // Auth — middleware: verifikasi JWT, lalu pastikan akun masih ACTIVE di database
@@ -57,6 +58,9 @@ func RequireRoles(roles ...string) fiber.Handler {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "peran tidak berwenang"})
 	}
 }
+
+
+
 
 // Router — seluruh rute API v3.
 func (s *Server) Router() *fiber.App {
@@ -141,6 +145,29 @@ func (s *Server) Router() *fiber.App {
 	auth.Get("/billing/ledger", staff, s.BukuKas)
 	auth.Post("/billing/ledger/deposit", staff, s.SetorBank)
 	auth.Post("/billing/ledger/deposit/:grup/approve", manager, s.SetujuiSetoran)
+
+	// SUPERADMIN: akses global platform.
+	superadminGroup := api.Group("/superadmin")
+	publicSuper := limiter.New(limiter.Config{Max: 10, Expiration: time.Minute})
+	superadminGroup.Post("/login", publicSuper, s.SuperadminLogin)
+	superadminAuth := superadminGroup.Group("", s.RequireSuperadmin())
+	superadminAuth.Get("/tenants", s.SuperadminTenants)
+	superadminAuth.Get("/audit-log", s.SuperadminAuditLog)
+	superadminAuth.Get("/settings", s.SuperadminSettings)
+	superadminAuth.Post("/settings", s.SuperadminUpdateSetting)
+	superadminAuth.Post("/reset-password", s.SuperadminResetPassword)
+
+
+	// Superadmin: prefix /api/superadmin (auth terpisah, token khusus).
+	sa := api.Group("/superadmin")
+	sa.Post("/login", public, s.SuperadminLogin)
+	saAuth := sa.Group("", s.RequireSuperadmin())
+	saAuth.Get("/me", s.SuperadminMe)
+	saAuth.Get("/tenants", s.SuperadminTenants)
+	saAuth.Get("/audit-log", s.SuperadminAuditLog)
+	saAuth.Get("/settings", s.SuperadminSettings)
+	saAuth.Post("/settings", s.SuperadminUpdateSetting)
+	saAuth.Post("/reset-password", s.SuperadminResetPassword)
 
 	return app
 }

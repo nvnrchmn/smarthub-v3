@@ -41,7 +41,30 @@ type Invite struct {
 }
 
 const (
-	InviteLinkTTL = 7 * 24 * time.Hour
-	OTPTTL        = 10 * time.Minute
+	InviteLinkTTL  = 7 * 24 * time.Hour
+	OTPTTL         = 10 * time.Minute
 	OTPMaxAttempts = 5
 )
+
+// Superadmin — akun global platform (tidak terikat tenant).
+type Superadmin struct {
+	ID           string     `json:"id"`
+	Email        string     `json:"email"`
+	FullName     string     `json:"full_name"`
+	PasswordHash string     `json:"-"`
+	Status       string     `json:"status"`
+	LastLoginAt  *time.Time `json:"last_login_at,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+}
+
+// AuditLog — rekam jejak aksi (global, untuk superadmin).
+type AuditLog struct {
+	ID        int64     `json:"id"`
+	TenantID  string    `json:"tenant_id"`
+	ActorID   string    `json:"actor_id,omitempty"`
+	Action    string    `json:"action"`
+	Entity    string    `json:"entity,omitempty"`
+	EntityID  string    `json:"entity_id,omitempty"`
+	Detail    any       `json:"detail,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+}
