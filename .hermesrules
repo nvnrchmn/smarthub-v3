@@ -8,3 +8,20 @@
 - Aturan: jangan build di server; jangan simpan rahasia di repo; jangan sentuh nginx.conf (pakai vhost aaPanel); jangan reboot/shutdown.
 
 --- ARSIP ---
+
+## Status 13 Sep 2026 — Fase 0 SELESAI (fondasi)
+- v2 dipensiunkan: repo ~/Projects/smarthub-v2 dihapus, service `smarthub` + unit lama `smarthub-server`, vhost lama, dan dist webroot diarsipkan ke `~/backups/smarthub-v2-retired-2026-09-13-0721/` (project 55M + dump DB + env + vhost + unit + dist).
+- Datastore hidup di container (`/opt/smarthub/compose.yml`): postgres 17.4, redis 7.4, minio (quay.io, pinned by digest) — bind 127.0.0.1 saja; bucket privat `smarthub-pii` + `smarthub-public`. RAM ±118 MB.
+- API: service `smarthub-api` (systemd, port 8082), env `/etc/smarthub.env` (600). Endpoint `/health` + `/api/health` (ping DB per request).
+- DB: migrasi `backend/migrations/0001_init.sql` (IDEMPOTEN) — tenants, users, invite_tokens, houses, residents (nik/kk BYTEA terenkripsi), audit_logs; RLS `tenant_isolation` di 5 tabel; peran aplikasi `smarthub_app` (bukan superuser).
+- Bukti: uji RLS dengan 2 tenant → superuser lihat 2 baris, app sebagai tenant A lihat 1, baris tenant B tidak terlihat (0), tanpa set tenant = 0. Migrasi dijalankan 2x sukses (idempoten).
+- CI/CD: `.github/workflows/deploy.yml` (build FE+BE → rsync → migrasi → restart → health). Secrets repo: VPS_SSH_KEY (kunci deploy yang sudah ada di authorized_keys), VPS_HOST, VPS_USER. Push ke main = deploy.
+- Terverifikasi publik: https://smarthub.logikraf.id 200 (bundle CI), /health & /api/health → {"database":true,"status":"ok"}.
+
+## Fase berikutnya (urutan saran)
+1. Onboarding invite-only + OTP (tabel invite_tokens sudah siap), onboarding tenant pertama + akun pengelola.
+2. Middleware: tenant dari JWT + `set app.tenant_id` per request; RBAC/ABAC (policy engine).
+3. Sensus warga: input NIK/KK terenkripsi AES-256-GCM, unggah berkas ke MinIO privat, antrean verifikasi sekretaris + audit log.
+4. Tagihan & pembayaran: invoice per unit, QRIS dinamis + webhook, kuitansi, buku kas tunai.
+5. Persuratan, forum, lapak warga, laporan + SSE.
+6. Uji: unit test policy & enkripsi, integration test RLS, E2E alur iuran.
