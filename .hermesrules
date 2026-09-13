@@ -36,6 +36,14 @@
 - Cron `/etc/cron.d/smarthub-billing` (06:10 harian) -> `smarthub-cli -cmd generate-invoices`; per tenant hanya jalan bila tanggal terbitnya jatuh hari ini. Bukti: `dibuat=2` untuk periode 2026-10.
 - BELUM: halaman UI /tagihan (warga) & /keuangan (Bendahara); notifikasi tagihan WhatsApp belum pernah terkirim nyata (unit uji tak punya penghuni ber-akun); laporan/rekap bulanan.
 
+
+## Status 13 Sep 2026 — Fase 3 UI SELESAI (tagihan warga + keuangan Bendahara)
+- `/tagihan` (warga): daftar tagihan unit + total belum lunas; ketuk untuk QRIS (QR dirender lokal via pustaka qrcode, tidak ada gambar dikirim ke pihak ketiga). Uji UI 7/7 lolos (Rp275.000 untuk rumah dihuni; QRIS ditolak dengan pesan jelas karena akun pembayaran belum ada; arahan setor tunai tampil).
+- `/keuangan` (Bendahara/Ketua): terbit massal per periode, catat bayar tunai (dialog nominal + validasi jumlah), master iuran, pengaturan tanggal terbit/jatuh tempo, buku kas 3 sumber dana + setoran ke bank + persetujuan Ketua.
+- E2E UI 18/18 lolos (Playwright, 2 peran). Bukti DB: pembayaran MANUAL_CASH 275.000 + kuitansi KW/202609/2026-09-A01; kas PETTY_CASH 275.000 -> setoran 100.000 -> BANK_ACCOUNT 100.000 disetujui.
+- CATATAN PERBAIKAN: pengiriman WhatsApp masih SINKRON di dalam permintaan HTTP, jadi aksi (bayar tunai/terbit) terasa lambat beberapa detik bila nomor gagal. Perlu dijadikan antrean/asinkron (prioritas berikutnya).
+- SISA: akun pembayaran (sub-akun) Smarthub di hub Logikraf agar QRIS hidup; laporan/rekap bulanan; notifikasi tagihan WA ke warga sungguhan belum pernah terkirim (unit uji pakai nomor palsu -> notifikasi_gagal=1, perilaku benar).
+
 --- ARSIP ---
 
 ## Status 13 Sep 2026 — Fase 0 SELESAI (fondasi)
