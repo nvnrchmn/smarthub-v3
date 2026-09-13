@@ -78,6 +78,7 @@ export default function Dashboard() {
             <div className="mb-2 flex flex-wrap justify-end gap-2">
               <button onClick={() => nav('/verifikasi')} className="btn-ghost">Verifikasi sensus</button>
               <button onClick={() => nav('/rumah')} className="btn-ghost">Kelola rumah &amp; KK</button>
+              <button onClick={() => nav('/keuangan')} className="btn-ghost">Keuangan</button>
             </div>
             <form onSubmit={submitInvite} className="mt-4 grid gap-3 sm:grid-cols-2">
               <input
@@ -130,10 +131,12 @@ export default function Dashboard() {
                   Lengkapi NIK, nomor KK, dan unggah foto KTP &amp; Kartu Keluarga untuk diverifikasi sekretaris.
                 </p>
               </button>
-              <div className="card">
+              <button onClick={() => nav('/tagihan')} className="card w-full text-left">
                 <p className="font-semibold text-ink">Tagihan iuran</p>
-                <p className="text-xs text-ink2">Menyusul pada fase tagihan &amp; QRIS.</p>
-              </div>
+                <p className="text-xs text-ink2">
+                  Lihat tagihan rumahmu, bayar via QRIS, atau setor tunai ke Bendahara.
+                </p>
+              </button>
             </div>
           </section>
         )}

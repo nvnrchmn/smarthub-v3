@@ -205,3 +205,118 @@ export const familyCards = {
     return r.items ?? []
   },
 }
+
+// ---- Tagihan iuran (Fase 3) ----
+export type InvoiceItem = { label: string; amount: number; kind: string }
+export type Invoice = {
+  id: string
+  house_unit_id: string
+  house_unit?: string
+  invoice_number: string
+  period: string
+  base_amount: number
+  arrears_amount: number
+  total_amount: number
+  status: string
+  due_date: string
+  paid_at?: string
+  items: InvoiceItem[]
+}
+export type FeeItem = {
+  id: string
+  code: string
+  label: string
+  amount: number
+  applies_to: string
+  is_active: boolean
+}
+export type CashLedger = {
+  id: string
+  source_type: string
+  transaction_type: string
+  amount: number
+  notes?: string
+  invoice_number?: string
+  approved_at?: string
+  ledger_date: string
+  transfer_group?: string
+}
+export type SaldoKas = {
+  bank_gateway: number
+  petty_cash: number
+  bank_account: number
+  menunggu_persetujuan: number
+}
+
+export const STATUS_TAGIHAN: Record<string, string> = {
+  UNPAID: 'Belum bayar',
+  PAID: 'Lunas',
+  VOID: 'Dibatalkan',
+}
+
+export const SUMBER_KAS: Record<string, string> = {
+  BANK_GATEWAY: 'Kas Bank / Gateway',
+  PETTY_CASH_TREASURER: 'Kas Fisik Bendahara',
+  BANK_ACCOUNT: 'Rekening Paguyuban',
+}
+
+export const SASARAN_IURAN: Record<string, string> = {
+  ALL: 'Semua rumah',
+  OCCUPIED: 'Hanya rumah dihuni',
+  VACANT: 'Hanya rumah kosong',
+}
+
+export const rupiah = (v: number) =>
+  'Rp' + (v ?? 0).toLocaleString('id-ID', { maximumFractionDigits: 0 })
+
+export const billing = {
+  invoices: async (status = '') => {
+    const r = await request<{ items: Invoice[]; jumlah: number; total_belum_lunas: number }>(
+      `/billing/invoices${status ? `?status=${encodeURIComponent(status)}` : ''}`,
+    )
+    return { items: r.items ?? [], jumlah: r.jumlah ?? 0, total: r.total_belum_lunas ?? 0 }
+  },
+  invoice: (id: string) => request<Invoice>(`/billing/invoices/${id}`),
+  qrisBuat: (id: string) =>
+    request<{ reference_id: string; qr_string: string; amount: number; expires_at: string }>(
+      `/billing/invoices/${id}/qris`,
+      { method: 'POST' },
+    ),
+  qrisCek: (id: string) =>
+    request<{ invoice: Invoice; status_gateway: string }>(`/billing/invoices/${id}/qris`),
+  tunai: (id: string, nominal: number, catatan: string) =>
+    request<Invoice>(`/billing/invoices/${id}/cash`, {
+      method: 'POST',
+      body: JSON.stringify({ nominal, catatan }),
+    }),
+  generate: (periode: string) =>
+    request<{ periode: string; dibuat: number; dilewati: number; total_unit: number }>(
+      '/billing/generate',
+      { method: 'POST', body: JSON.stringify({ periode }) },
+    ),
+  feeItems: async () => {
+    const r = await request<{ items: FeeItem[] }>('/billing/fee-items')
+    return r.items ?? []
+  },
+  simpanIuran: (f: Partial<FeeItem>) =>
+    request<{ id: string }>('/billing/fee-items', { method: 'POST', body: JSON.stringify(f) }),
+  pengaturan: () => request<{ billing_day: number; due_days: number }>('/billing/settings'),
+  simpanPengaturan: (billing_day: number, due_days: number) =>
+    request<{ status: string }>('/billing/settings', {
+      method: 'POST',
+      body: JSON.stringify({ billing_day, due_days }),
+    }),
+  kas: async () => {
+    const r = await request<{ items: CashLedger[]; saldo: SaldoKas }>('/billing/ledger')
+    return { items: r.items ?? [], saldo: r.saldo }
+  },
+  setor: (nominal: number, catatan: string, bukti = '') =>
+    request<{ transfer_group: string }>('/billing/ledger/deposit', {
+      method: 'POST',
+      body: JSON.stringify({ nominal, catatan, bukti }),
+    }),
+  setujuiSetor: (grup: string) =>
+    request<{ status: string }>(`/billing/ledger/deposit/${grup}/approve`, { method: 'POST' }),
+}
+
+export const BILLING_STAFF_ROLES = ['TENANT_MANAGER', 'TREASURER']

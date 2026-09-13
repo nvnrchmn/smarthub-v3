@@ -6,6 +6,8 @@ import Dashboard from './pages/Dashboard'
 import Sensus from './pages/Sensus'
 import Verifikasi from './pages/Verifikasi'
 import Rumah from './pages/Rumah'
+import Tagihan from './pages/Tagihan'
+import Keuangan from './pages/Keuangan'
 
 export default function App() {
   return (
@@ -18,6 +20,8 @@ export default function App() {
         <Route path="/sensus" element={<Sensus />} />
         <Route path="/verifikasi" element={<Verifikasi />} />
         <Route path="/rumah" element={<Rumah />} />
+        <Route path="/tagihan" element={<Tagihan />} />
+        <Route path="/keuangan" element={<Keuangan />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
