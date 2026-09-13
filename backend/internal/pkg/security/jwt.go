@@ -1,0 +1,53 @@
+package security
+
+import (
+	"errors"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+)
+
+// Claims — identitas yang dibawa token. tenant_id ada di dalam token, sehingga
+// permintaan ke tenant lain tidak bisa dipalsukan lewat header saja.
+type Claims struct {
+	UserID   string `json:"uid"`
+	TenantID string `json:"tid"`
+	Role     string `json:"role"`
+	jwt.RegisteredClaims
+}
+
+const tokenTTL = 12 * time.Hour
+
+func GenerateToken(userID, tenantID, role, secret string) (string, error) {
+	if secret == "" {
+		return "", errors.New("JWT_SECRET belum diisi")
+	}
+	claims := Claims{
+		UserID:   userID,
+		TenantID: tenantID,
+		Role:     role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   userID,
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(tokenTTL)),
+		},
+	}
+	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(secret))
+}
+
+func ParseToken(token, secret string) (*Claims, error) {
+	parsed, err := jwt.ParseWithClaims(token, &Claims{}, func(t *jwt.Token) (any, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("algoritma tanda tangan tidak didukung")
+		}
+		return []byte(secret), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	claims, ok := parsed.Claims.(*Claims)
+	if !ok || !parsed.Valid {
+		return nil, errors.New("token tidak valid")
+	}
+	return claims, nil
+}

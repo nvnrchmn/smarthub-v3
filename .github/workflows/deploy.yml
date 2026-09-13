@@ -34,7 +34,9 @@ jobs:
         run: |
           cd backend
           go vet ./...
+          go test ./...
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o bin/smarthub-api ./cmd/api
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o bin/smarthub-cli ./cmd/cli
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -42,7 +44,7 @@ jobs:
           name: smarthub-build
           path: |
             frontend/dist
-            backend/bin/smarthub-api
+            backend/bin
           retention-days: 1
 
 
@@ -74,7 +76,7 @@ jobs:
         run: |
           rsync -avz --chmod=F755 --rsync-path="sudo rsync" \
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-            backend/bin/smarthub-api ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/smarthub/bin/smarthub-api
+            backend/bin/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/smarthub/bin/
 
       - name: Apply migrations
         run: |

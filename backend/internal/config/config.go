@@ -7,6 +7,7 @@ type Config struct {
 	DatabaseURL string
 	RedisAddr   string
 	JWTSecret   string
+	BaseURL     string
 	Env         string
 }
 
@@ -22,6 +23,7 @@ func Load() Config {
 		DatabaseURL: get("DATABASE_URL", ""),
 		RedisAddr:   get("REDIS_ADDR", "127.0.0.1:6379"),
 		JWTSecret:   get("JWT_SECRET", ""),
+		BaseURL:     get("BASE_URL", "https://smarthub.logikraf.id"),
 		Env:         get("APP_ENV", "production"),
 	}
 }
