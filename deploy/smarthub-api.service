@@ -1,0 +1,17 @@
+[Unit]
+Description=Smarthub v3 API (Go)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/smarthub
+ExecStart=/opt/smarthub/bin/smarthub-api
+EnvironmentFile=/etc/smarthub.env
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

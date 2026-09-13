@@ -1,0 +1,92 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '.hermesrules'
+      - 'docs/**'
+      - 'LICENSE'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      - name: Build Go binary
+        run: |
+          cd backend
+          go vet ./...
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o bin/smarthub-api ./cmd/api
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: smarthub-build
+          path: |
+            frontend/dist
+            backend/bin/smarthub-api
+          retention-days: 1
+
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: smarthub-build
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy frontend
+        run: |
+          rsync -avz --delete --chown=www:www --rsync-path="sudo rsync" \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            frontend/dist/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/www/wwwroot/smarthub.logikraf.id/
+
+      - name: Deploy binary
+        run: |
+          rsync -avz --chmod=F755 --rsync-path="sudo rsync" \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            backend/bin/smarthub-api ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/smarthub/bin/smarthub-api
+
+      - name: Apply migrations
+        run: |
+          for f in backend/migrations/*.sql; do
+            echo "applying $f"
+            ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+              ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+              "sudo docker exec -i smarthub_db psql -q -v ON_ERROR_STOP=1 -U smarthub -d smarthub" < "$f"
+          done
+
+      - name: Restart service and verify
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "sudo systemctl restart smarthub-api && sleep 3 && curl -fsS http://127.0.0.1:8082/health"

@@ -1,0 +1,10 @@
+# .hermesrules — smarthub-v3
+
+## INDEX
+- Produk: SaaS multi-tenant perumahan. Invite-only + OTP. Peran: warga, sekretaris, bendahara, pengelola.
+- Stack: Go + Fiber, PostgreSQL 17 (RLS, PII AES-256-GCM), Redis, MinIO, worker Asynq, React+Vite+Zustand.
+- Deploy: GitHub Actions (push main) → VPS 103.197.188.248, systemd + vhost aaPanel, domain smarthub.logikraf.id.
+- Datastore: docker compose di /opt/smarthub (127.0.0.1 saja), kredensial /opt/smarthub/.env (600).
+- Aturan: jangan build di server; jangan simpan rahasia di repo; jangan sentuh nginx.conf (pakai vhost aaPanel); jangan reboot/shutdown.
+
+--- ARSIP ---

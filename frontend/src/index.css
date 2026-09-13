@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Token semantic dari dokumen UI/UX (light & dark). Nilai dijaga tetap sama
+   dengan spesifikasi supaya kontras yang sudah dihitung tidak berubah. */
+:root {
+  --bg-canvas: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-subtle: #f1f5f9;
+  --border-default: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --brand-primary: #2563eb;
+  --status-success: #059669;
+  --status-warning: #d97706;
+  --status-danger: #dc2626;
+}
+
+.dark {
+  --bg-canvas: #090d16;
+  --bg-surface: #111827;
+  --bg-subtle: #1e293b;
+  --border-default: #1f2937;
+  --text-primary: #f9fafb;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --brand-primary: #3b82f6;
+  --status-success: #10b981;
+  --status-warning: #f59e0b;
+  --status-danger: #ef4444;
+}
+
+body {
+  @apply bg-canvas text-ink font-sans antialiased;
+}
