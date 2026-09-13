@@ -44,6 +44,15 @@
 - CATATAN PERBAIKAN: pengiriman WhatsApp masih SINKRON di dalam permintaan HTTP, jadi aksi (bayar tunai/terbit) terasa lambat beberapa detik bila nomor gagal. Perlu dijadikan antrean/asinkron (prioritas berikutnya).
 - SISA: akun pembayaran (sub-akun) Smarthub di hub Logikraf agar QRIS hidup; laporan/rekap bulanan; notifikasi tagihan WA ke warga sungguhan belum pernah terkirim (unit uji pakai nomor palsu -> notifikasi_gagal=1, perilaku benar).
 
+## Status 13 Sep 2026 — layer superadmin JALAN (login 401 ditutup)
+- Akar #1 (Fiber v3): middleware grup berlaku untuk route yang didaftarkan SESUDAHNYA. `/api/superadmin/*` didaftarkan setelah `auth := api.Group("", RequireAuth)` → 401 sebelum handler (log handler tak pernah muncul). Fix: daftarkan superadmin SEBELUM blok RequireAuth.
+- Akar #2 (RLS): query global (semua tenant, audit log) tunduk RLS → 0 baris. `0008_superadmin_rls.sql` + `Store.WithSuperadmin` (GUC `app.superadmin='on'`; policy hanya `tenants` + `audit_logs`).
+- Akar #3 (frontend): `request()` selalu kirim token tenant → dasbor 401 lalu balik ke login. Kini `request(path, init, 'superadmin')` + `SUPERADMIN_TOKEN_KEY`.
+- Kontrak API: login `{token, superadmin{…}}`; tenants `{items,jumlah}`; audit-log `{items}`; settings `?key=` (tanpa key = semua `{items}`); reset-password `{old_password,new_password}` → 401 bila lama salah.
+- UI: `/superadmin` (login) + `/superadmin/dasbor` (tab Tenant, Audit Log, Pengaturan = kunci Xendit + ganti sandi). `Settings.tsx` lama dihapus (tak dirutekan, pakai token tenant).
+- Bukti: CI `ba0fc34` & `11bea6c` success; produksi login 200 (token 275 char), tenants=1 (Griya Asri), audit-log=100, settings tulis/baca/bersih 200, reset sandi lama salah 401, tanpa token 401; Playwright produksi mendarat di `/superadmin/dasbor`, "Griya Asri" tampil, 2 form Pengaturan tampil, 0 error konsol (/tmp/sbverify/4*.png).
+- BELUM: nilai kunci Xendit platform masih kosong (`settings` = `{}`) → isi di tab Pengaturan; sub-akun Xendit QRIS belum ada (`NO_SUB_ACCOUNT`).
+
 --- ARSIP ---
 
 ## Status 13 Sep 2026 — Fase 0 SELESAI (fondasi)
