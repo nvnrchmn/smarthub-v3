@@ -84,8 +84,13 @@ export const census = {
   me: () => request<ResidentProfile>('/census/me'),
   submitMe: (body: Record<string, unknown>) =>
     request<ResidentProfile>('/census/me', { method: 'POST', body: JSON.stringify(body) }),
-  queue: (status = 'UNVERIFIED') =>
-    request<ResidentProfile[]>(`/census?status=${encodeURIComponent(status)}`),
+  // Backend membalas { items, jumlah }; UI memakai array-nya saja.
+  queue: async (status = 'UNVERIFIED') => {
+    const r = await request<{ items: ResidentProfile[]; jumlah: number }>(
+      `/census?status=${encodeURIComponent(status)}`,
+    )
+    return Array.isArray(r) ? (r as unknown as ResidentProfile[]) : r.items || []
+  },
   detail: (id: string) => request<ResidentProfile>(`/census/${id}`),
   reveal: (id: string) =>
     request<{ nik: string; kk_number: string }>(`/census/${id}/reveal`, { method: 'POST' }),
