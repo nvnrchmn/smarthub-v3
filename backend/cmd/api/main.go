@@ -67,11 +67,13 @@ func main() {
 	}
 
 	superadmin := &usecase.Superadmin{Store: store}
+	reports := &usecase.Reports{Store: store, Notify: auth.Notify}
 
 	srv := &delivery.Server{
 		Auth:       auth,
 		Census:     census,
 		Billing:    billing,
+		Reports:    reports,
 		Superadmin: superadmin,
 	}
 

@@ -370,3 +370,63 @@ export const superadmin = {
       'superadmin',
     ),
 }
+
+// ---- Laporan (pengurus) ----
+export type RekapItem = { label: string; kind: string; jumlah: number; amount: number }
+export type RekapBulanan = {
+  periode: string
+  tenant_nama: string
+  jumlah_invoice: number
+  total_ditagih: number
+  total_dibayar: number
+  total_tunggakan: number
+  jumlah_lunas: number
+  jumlah_belum: number
+  rincian: RekapItem[] | null
+  kas_tunai: number
+  kas_qris: number
+}
+export type TunggakanBaris = {
+  unit: string
+  kepala_keluarga: string
+  telepon: string
+  periode_tertua: string
+  jumlah_tagihan: number
+  total_tunggakan: number
+  hari_terlambat: number
+  bucket: string
+}
+export type BucketTunggakan = { label: string; jumlah: number; amount: number }
+export type Tunggakan = {
+  as_of: string
+  jumlah_unit: number
+  total: number
+  buckets: BucketTunggakan[] | null
+  baris: TunggakanBaris[] | null
+}
+
+export const laporan = {
+  rekap: (periode: string) => request<RekapBulanan>(`/reports/monthly?period=${encodeURIComponent(periode)}`),
+  tunggakan: () => request<Tunggakan>('/reports/arrears'),
+  kirim: (periode: string) =>
+    request<{ status: string; terkirim: number }>('/reports/send', {
+      method: 'POST',
+      body: JSON.stringify({ periode }),
+    }),
+  unduh: async (periode: string, format: 'pdf' | 'csv') => {
+    const token = auth.get()
+    const res = await fetch(`/api/reports/download?format=${format}&period=${encodeURIComponent(periode)}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!res.ok) throw new ApiError(res.status, 'gagal mengunduh laporan')
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `laporan-iuran-${periode}.${format}`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  },
+}

@@ -17,6 +17,7 @@ type Server struct {
 	Auth        *usecase.Auth
 	Census      *usecase.Census
 	Billing     *usecase.Billing
+	Reports     *usecase.Reports
 	Superadmin  *usecase.Superadmin
 }
 
@@ -139,19 +140,27 @@ func (s *Server) Router() *fiber.App {
 	auth.Delete("/family-cards/:id/members/:memberId", staff, s.RemoveFamilyMember)
 
 	// Tagihan & kas: warga melihat tagihan unitnya, pengurus mengelola keuangan.
+	// Bendahara (TREASURER) ikut di sini — bukan di rute sensus/rumah.
+	financeStaff := RequireRoles(domain.RoleTenantManager, domain.RoleTreasurer)
 	auth.Get("/billing/invoices", s.DaftarTagihan)
 	auth.Get("/billing/invoices/:id", s.DetailTagihan)
 	auth.Get("/billing/invoices/:id/qris", s.QRISCek)
 	auth.Post("/billing/invoices/:id/qris", s.QRISBuat)
 	auth.Post("/billing/invoices/:id/cash", s.CatatTunai)
-	auth.Get("/billing/fee-items", staff, s.MasterIuran)
-	auth.Post("/billing/fee-items", staff, s.SimpanIuran)
-	auth.Get("/billing/settings", staff, s.PengaturanTagihan)
-	auth.Post("/billing/settings", staff, s.SimpanPengaturanTagihan)
-	auth.Post("/billing/generate", staff, s.GenerateTagihan)
-	auth.Get("/billing/ledger", staff, s.BukuKas)
-	auth.Post("/billing/ledger/deposit", staff, s.SetorBank)
+	auth.Get("/billing/fee-items", financeStaff, s.MasterIuran)
+	auth.Post("/billing/fee-items", financeStaff, s.SimpanIuran)
+	auth.Get("/billing/settings", financeStaff, s.PengaturanTagihan)
+	auth.Post("/billing/settings", financeStaff, s.SimpanPengaturanTagihan)
+	auth.Post("/billing/generate", financeStaff, s.GenerateTagihan)
+	auth.Get("/billing/ledger", financeStaff, s.BukuKas)
+	auth.Post("/billing/ledger/deposit", financeStaff, s.SetorBank)
 	auth.Post("/billing/ledger/deposit/:grup/approve", manager, s.SetujuiSetoran)
+
+	// Laporan & tunggakan (pengurus: Ketua, Sekretaris, Bendahara).
+	auth.Get("/reports/monthly", financeStaff, s.LaporanRekap)
+	auth.Get("/reports/arrears", financeStaff, s.LaporanTunggakan)
+	auth.Get("/reports/download", financeStaff, s.LaporanUnduh)
+	auth.Post("/reports/send", financeStaff, s.LaporanKirim)
 
 	return app
 }
