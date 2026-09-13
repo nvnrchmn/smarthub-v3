@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { census, roleLabelCensus, auth, type ResidentProfile } from '../lib/api'
+import { census, roleLabelCensus, auth, ApiError, type ResidentProfile } from '../lib/api'
 
 // Antrean verifikasi untuk Sekretaris/Pengelola: daftar data tersamar, buka PII
 // (tercatat audit), lihat berkas KTP/KK, lalu setujui atau tolak.
@@ -18,8 +18,8 @@ export default function Verifikasi() {
   async function muat(status = filter) {
     try {
       setList(await census.queue(status))
-    } catch {
-      nav('/masuk')
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) return nav('/masuk')
     }
   }
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { census, roleLabel, auth, type ResidentProfile } from '../lib/api'
+import { census, roleLabel, auth, ApiError, type ResidentProfile } from '../lib/api'
 
 // Formulir sensus warga: data dasar + NIK/No. KK + unggah KTP & KK.
 // Gerak mengikuti UIUX.md 1.3 (durasi lambat, stagger antar kartu).
@@ -20,8 +20,9 @@ export default function Sensus() {
     (async () => {
       try {
         setMe(await census.me())
-      } catch {
-        nav('/masuk')
+      } catch (e) {
+        // 404 = warga belum pernah mengisi sensus (bukan masalah sesi).
+        if (e instanceof ApiError && e.status === 401) return nav('/masuk')
       }
       // peran untuk menu
       try {
@@ -92,6 +93,14 @@ export default function Sensus() {
       </header>
 
       <main className="animate-list mx-auto max-w-3xl space-y-4 px-4 py-5">
+        {!me && (
+          <section className="card border-brand/30">
+            <p className="text-sm text-ink2">
+              Belum ada data sensus untuk akun ini. Isi formulir di bawah lalu simpan — setelah itu
+              berkas KTP &amp; Kartu Keluarga bisa diunggah.
+            </p>
+          </section>
+        )}
         {me && (
           <section className="card flex items-center justify-between">
             <div>
