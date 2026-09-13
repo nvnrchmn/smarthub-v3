@@ -200,6 +200,8 @@ func (s *Store) ListFamilyCards(ctx context.Context, tenantID string) ([]domain.
 			return err
 		}
 		for i := range cards {
+			// Slice kosong, bukan nil: JSON harus [] agar klien tidak mogok.
+			cards[i].Members = []domain.FamilyCardMember{}
 			mrows, err := tx.Query(ctx, `select id, full_name, family_role, verification_status, lifecycle_status
 				from resident_profiles where family_card_id = $1
 				order by case family_role when 'HEAD_OF_FAMILY' then 0 when 'SPOUSE' then 1 when 'CHILD' then 2 else 3 end, full_name`, cards[i].ID)

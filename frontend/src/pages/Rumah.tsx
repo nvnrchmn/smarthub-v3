@@ -313,7 +313,7 @@ export default function Rumah() {
                   </div>
 
                   <ul className="mt-3 space-y-2">
-                    {c.members.map((m) => (
+                    {(c.members ?? []).map((m) => (
                       <li key={m.id} className="flex items-center justify-between gap-2 rounded-lg bg-subtle px-3 py-2">
                         <div>
                           <p className="text-sm font-medium">{m.full_name}</p>
@@ -329,7 +329,7 @@ export default function Rumah() {
                         </button>
                       </li>
                     ))}
-                    {c.members.length === 0 && <li className="text-xs text-muted">Belum ada anggota.</li>}
+                    {(c.members ?? []).length === 0 && <li className="text-xs text-muted">Belum ada anggota.</li>}
                   </ul>
 
                   <form

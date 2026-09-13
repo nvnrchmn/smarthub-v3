@@ -23,6 +23,16 @@ func (s *Server) health(c fiber.Ctx) error {
 
 // errStatus — pemetaan error usecase ke kode HTTP. Pesan sengaja umum supaya
 // tidak membocorkan apakah sebuah email terdaftar atau tidak.
+// detail — memakai penjelasan spesifik dari galat bila ada (mis. "rumah masih
+// dihuni, akhiri hunian dulu") agar pengguna tidak menerima pesan yang menyesatkan.
+func detail(err error, bawaan string) string {
+	t := err.Error()
+	if i := strings.Index(t, ": "); i >= 0 && i+2 < len(t) {
+		return strings.TrimSpace(t[i+2:])
+	}
+	return bawaan
+}
+
 func errStatus(err error) (int, string) {
 	switch {
 	case errors.Is(err, usecase.ErrCredentials):
@@ -45,7 +55,7 @@ func errStatus(err error) (int, string) {
 	case errors.Is(err, usecase.ErrNotFound):
 		return fiber.StatusNotFound, "data tidak ditemukan"
 	case errors.Is(err, usecase.ErrConflict):
-		return fiber.StatusConflict, "sudah terdaftar"
+		return fiber.StatusConflict, detail(err, "sudah terdaftar")
 	}
 	// Galat tak terduga wajib tercatat: tanpa ini kegagalan 500 tak bisa dilacak.
 	log.Printf("ERROR internal: %v", err)
