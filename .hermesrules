@@ -141,3 +141,5 @@ Fase 0 (v3): OK. Fase 1 (onboarding): OK (commit 93c407b + 34dd51a + 4475a01). F
 
 - TERPASANG & TERBUKTI 14 Sep 20:40: cron `/etc/cron.d/smarthub-billing` baris `*/5 * * * *` -> `-cmd reconcile-payments` (log `/var/log/smarthub-reconcile.log`). Bukti: journald CRON 20:40:01 menjalankan perintahnya; log 0 byte (senyap = tidak ada kandidat, memang belum ada invoice UNPAID ber-QRIS di produksi); CI 53af927 success.
 - JEBAKAN saat menguji manual: urutan `set -a` WAJIB sebelum sourcing `.env`. Kalau `set -a` ditaruh setelah, variabel hanya ada di shell dan TIDAK diwarisi proses anak -> `HUB_INTERNAL_KEY` kosong -> error palsu "akun pembayaran belum aktif".
+
+- KEPUTUSAN PEMILIK 15 Sep 2026: Sprint 2 (test jalur uang) & Sprint 7 (pengingat tagihan menunggak) DITUNDA ("nanti dulu"). Jangan mulai tanpa diminta. Sprint 7 juga menunggu putusan produk: penerima pesan (pemilik unit vs semua penghuni), isi pesan, jeda/opt-in.
