@@ -276,25 +276,16 @@ func (b *Billing) prepareBayar(ctx context.Context, sub *domain.SubjectContext, 
 	return inv, nil
 }
 
-// CekQRIS — memeriksa status ke hub lalu menandai lunas (idempoten).
-// Karena hub tidak mengirim webhook, fungsi ini yang menjadi jembatan
-// "QRIS lunas -> invoice lunas", dan dipanggil juga oleh proses rekonsiliasi.
-func (b *Billing) CekQRIS(ctx context.Context, sub *domain.SubjectContext, invoiceID string) (*domain.Invoice, string, error) {
-	inv, err := b.Store.InvoiceByID(ctx, sub.TenantID, invoiceID)
-	if err != nil {
-		if errors.Is(err, postgres.ErrBillingNotFound) {
-			return nil, "", ErrBillingNotFound
-		}
-		return nil, "", err
-	}
-	res := domain.ResourceContext{TenantID: sub.TenantID, HouseUnitID: inv.HouseUnitID}
-	if !domain.CanAccess(*sub, res, domain.ActionViewInvoice) {
-		return nil, "", ErrBillingForbidden
-	}
+// cekQRISInti — inti pemeriksaan status QRIS + pelunasan, TANPA gerbang izin.
+//
+// Dipakai dua jalur: CekQRIS (permintaan pengguna; izin sudah dicek pemanggil)
+// dan RekonsiliasiQRIS (cron, tidak punya subjek pengguna). aktor = UUID
+// pengguna pencatat pelunasan; "" berarti sistem dan disimpan sebagai NULL.
+func (b *Billing) cekQRISInti(ctx context.Context, tenantID string, inv *domain.Invoice, aktor string) (*domain.Invoice, string, error) {
 	if inv.Status == domain.InvoicePaid {
 		return inv, "PAID", nil
 	}
-	ref, _, exp, err := b.Store.QRISTersimpan(ctx, sub.TenantID, inv.ID)
+	ref, _, exp, err := b.Store.QRISTersimpan(ctx, tenantID, inv.ID)
 	if err != nil || ref == "" {
 		return inv, "BELUM_ADA_QRIS", nil
 	}
@@ -317,11 +308,73 @@ func (b *Billing) CekQRIS(ctx context.Context, sub *domain.SubjectContext, invoi
 		log.Printf("[billing] nominal QRIS %s tidak cocok: gateway %.0f vs tagihan %.0f", ref, st.Amount, inv.TotalAmount)
 		return inv, "NOMINAL_TIDAK_COCOK", nil
 	}
-	if err := b.lunasi(ctx, sub.TenantID, inv, domain.PayQRIS, ref, sub.AccountID, ""); err != nil {
+	if err := b.lunasi(ctx, tenantID, inv, domain.PayQRIS, ref, aktor, ""); err != nil {
 		return inv, status, err
 	}
-	baru, err := b.Store.InvoiceByID(ctx, sub.TenantID, inv.ID)
+	baru, err := b.Store.InvoiceByID(ctx, tenantID, inv.ID)
 	return baru, "PAID", err
+}
+
+// CekQRIS — memeriksa status ke hub lalu menandai lunas (idempoten).
+// Karena hub tidak mengirim webhook, fungsi ini yang menjadi jembatan
+// "QRIS lunas -> invoice lunas", dan dipanggil juga oleh proses rekonsiliasi.
+func (b *Billing) CekQRIS(ctx context.Context, sub *domain.SubjectContext, invoiceID string) (*domain.Invoice, string, error) {
+	inv, err := b.Store.InvoiceByID(ctx, sub.TenantID, invoiceID)
+	if err != nil {
+		if errors.Is(err, postgres.ErrBillingNotFound) {
+			return nil, "", ErrBillingNotFound
+		}
+		return nil, "", err
+	}
+	res := domain.ResourceContext{TenantID: sub.TenantID, HouseUnitID: inv.HouseUnitID}
+	if !domain.CanAccess(*sub, res, domain.ActionViewInvoice) {
+		return nil, "", ErrBillingForbidden
+	}
+	return b.cekQRISInti(ctx, sub.TenantID, inv, sub.AccountID)
+}
+
+// HasilRekonsiliasi — ringkasan satu putaran rekonsiliasi QRIS untuk satu tenant.
+type HasilRekonsiliasi struct {
+	Diperiksa int
+	Dilunasi  int
+	Dilewati  int
+	Gagal     int
+}
+
+// RekonsiliasiQRIS — menyusul tagihan yang sebenarnya sudah dibayar warga.
+//
+// Hub tidak mengirim webhook, jadi satu-satunya jembatan adalah menanyakan
+// status ke hub. Sebelum ini hanya tombol "Cek status" yang memicunya: kalau
+// warga membayar lalu menutup aplikasi tanpa menekan tombol itu, tagihan
+// nyangkut UNPAID tanpa batas. Dipanggil terjadwal (cron), aman diulang.
+func (b *Billing) RekonsiliasiQRIS(ctx context.Context, tenantID string) (*HasilRekonsiliasi, error) {
+	hasil := &HasilRekonsiliasi{}
+	if !b.Hub.Enabled() {
+		return hasil, ErrGatewayBelumAktif
+	}
+	daftar, err := b.Store.InvoiceQRISPending(ctx, tenantID)
+	if err != nil {
+		return hasil, err
+	}
+	for i := range daftar {
+		inv := daftar[i]
+		hasil.Diperiksa++
+		_, status, err := b.cekQRISInti(ctx, tenantID, &inv, "")
+		switch {
+		case errors.Is(err, ErrSudahLunas):
+			// Sudah dilunasi jalur lain antara baca dan tulis: bukan kegagalan.
+			hasil.Dilewati++
+		case err != nil:
+			hasil.Gagal++
+			log.Printf("[rekonsiliasi] tenant=%s invoice=%s gagal: %v", tenantID, inv.InvoiceNumber, err)
+		case status == "PAID":
+			hasil.Dilunasi++
+			log.Printf("[rekonsiliasi] tenant=%s invoice=%s LUNAS otomatis dari QRIS", tenantID, inv.InvoiceNumber)
+		default:
+			hasil.Dilewati++
+		}
+	}
+	return hasil, nil
 }
 
 // lunasi — menandai invoice lunas + membuat pembayaran & baris buku kas.

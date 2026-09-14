@@ -325,6 +325,34 @@ func (s *Store) DaftarInvoice(ctx context.Context, tenantID string, unitIDs []st
 	return out, err
 }
 
+// InvoiceQRISPending — invoice yang MASIH terbuka tetapi sudah punya QRIS terbit.
+//
+// Inilah kandidat rekonsiliasi: warga bisa saja sudah membayar di aplikasi
+// m-banking lalu menutup aplikasi tanpa menekan "Cek status", sehingga tanpa
+// proses ini tagihannya nyangkut UNPAID.
+func (s *Store) InvoiceQRISPending(ctx context.Context, tenantID string) ([]domain.Invoice, error) {
+	out := []domain.Invoice{}
+	err := s.WithTenant(ctx, tenantID, func(tx pgx.Tx) error {
+		q := `select ` + invoiceCols + ` from ` + invoiceFrom +
+			` where i.status = $1 and i.qris_reference is not null and i.qris_reference <> ''` +
+			` order by i.period limit 500`
+		rows, err := tx.Query(ctx, q, domain.InvoiceUnpaid)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			inv, err := scanInvoice(rows)
+			if err != nil {
+				return err
+			}
+			out = append(out, *inv)
+		}
+		return rows.Err()
+	})
+	return out, err
+}
+
 func (s *Store) SimpanQRIS(ctx context.Context, tenantID, invoiceID, reference, qrString string, expires time.Time) error {
 	return s.WithTenant(ctx, tenantID, func(tx pgx.Tx) error {
 		_, err := tx.Exec(ctx, `update invoices set qris_reference=$2, qris_string=$3,

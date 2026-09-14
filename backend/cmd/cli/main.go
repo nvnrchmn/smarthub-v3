@@ -34,8 +34,8 @@ func main() {
 	paksa := flag.Bool("force", false, "abaikan tanggal terbit tenant")
 	flag.Parse()
 
-	if *cmd != "create-tenant" && *cmd != "generate-invoices" && *cmd != "bootstrap-superadmin" {
-		log.Fatal("perintah tidak dikenal; pakai -cmd create-tenant | generate-invoices | bootstrap-superadmin")
+	if *cmd != "create-tenant" && *cmd != "generate-invoices" && *cmd != "reconcile-payments" && *cmd != "bootstrap-superadmin" {
+		log.Fatal("perintah tidak dikenal; pakai -cmd create-tenant | generate-invoices | reconcile-payments | bootstrap-superadmin")
 	}
 	// Argumen ini hanya wajib untuk pembuatan tenant, bukan untuk tugas cron.
 	if *cmd == "create-tenant" && (*name == "" || *slug == "" || *email == "" || len(*password) < 8 || *adminDSN == "") {
@@ -57,6 +57,10 @@ func main() {
 	store := postgres.New(db.Pool)
 	if *cmd == "generate-invoices" {
 		generateInvoices(store, *periode, *paksa)
+		return
+	}
+	if *cmd == "reconcile-payments" {
+		reconcilePayments(store)
 		return
 	}
 	if *cmd == "bootstrap-superadmin" {
@@ -115,5 +119,41 @@ func generateInvoices(store *postgres.Store, periode string, paksa bool) {
 		}
 		fmt.Printf("%s periode %s: dibuat=%d dilewati=%d unit=%d wa_ok=%d wa_gagal=%d\n",
 			t.Nama, hasil.Periode, hasil.Dibuat, hasil.Dilewati, hasil.Ditagih, hasil.TerkirimWA, hasil.GagalWA)
+	}
+}
+
+// reconcilePayments — dipanggil cron sering (mis. tiap 5 menit).
+//
+// Hub pembayaran tidak mengirim webhook untuk QRIS, jadi tagihan hanya lunas
+// kalau ada yang menekan "Cek status". Warga yang membayar lalu langsung
+// menutup aplikasi meninggalkan tagihannya nyangkut UNPAID. Fungsi ini
+// menyusul status ke hub untuk SEMUA tenant; idempoten, aman diulang.
+func reconcilePayments(store *postgres.Store) {
+	ctx := context.Background()
+	daftar, err := store.Tenants(ctx)
+	if err != nil {
+		log.Fatalf("daftar tenant: %v", err)
+	}
+	notifier := notify.New()
+	total := 0
+	for _, t := range daftar {
+		// store.WithTenant memasang app.tenant_id per transaksi, jadi tiap
+		// tenant hanya membaca datanya sendiri — RLS tetap berlaku.
+		b := &usecase.Billing{Store: store, Hub: hub.New(), Notify: notifier}
+		hasil, err := b.RekonsiliasiQRIS(ctx, t.ID)
+		if err != nil {
+			log.Printf("tenant %s: rekonsiliasi gagal: %v", t.Nama, err)
+			continue
+		}
+		// Diam saat tidak ada kandidat, supaya log cron tetap bersih.
+		if hasil.Diperiksa == 0 {
+			continue
+		}
+		fmt.Printf("%s: diperiksa=%d lunas=%d dilewati=%d gagal=%d\n",
+			t.Nama, hasil.Diperiksa, hasil.Dilunasi, hasil.Dilewati, hasil.Gagal)
+		total += hasil.Dilunasi
+	}
+	if total > 0 {
+		fmt.Printf("total tagihan dilunasi otomatis: %d\n", total)
 	}
 }
