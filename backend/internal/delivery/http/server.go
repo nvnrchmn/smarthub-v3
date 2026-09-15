@@ -75,7 +75,20 @@ func RequireRoles(roles ...string) fiber.Handler {
 
 // Router — seluruh rute API v3.
 func (s *Server) Router() *fiber.App {
-	app := fiber.New(fiber.Config{AppName: "Smarthub API"})
+	app := fiber.New(fiber.Config{
+		AppName: "Smarthub API",
+		// Di belakang nginx, alamat yang terlihat Fiber SELALU 127.0.0.1. Tanpa
+		// pengaturan ini seluruh pengguna dihitung sebagai satu IP oleh pembatas
+		// laju — batas 120/menit dan 15 login/menit menjadi milik semua orang
+		// bersama, sehingga satu warga yang ramai bisa mengunci yang lain (429).
+		// Hanya proksi lokal yang dipercaya, agar X-Forwarded-For tidak bisa
+		// dipalsukan dari internet.
+		ProxyHeader: fiber.HeaderXForwardedFor,
+		TrustProxy:  true,
+		TrustProxyConfig: fiber.TrustProxyConfig{
+			Proxies: []string{"127.0.0.1", "::1"},
+		},
+	})
 
 	// CORS: hanya origin resmi yang diizinkan (SM01-CORS).
 	app.Use(cors.New(cors.Config{
