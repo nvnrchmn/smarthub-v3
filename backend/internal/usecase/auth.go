@@ -16,6 +16,7 @@ import (
 )
 
 type Notifier interface {
+	SendLupaSandi(phone, code, tenantName string) error
 	SendOTP(phone, code, tenantName string) error
 	SendInviteLink(phone, link, tenantName string) error
 	SendTagihan(phone, pesan, tenantName string) error
@@ -27,6 +28,23 @@ type Auth struct {
 	JWTSecret string
 	BaseURL   string // dasar tautan aktivasi, mis. https://smarthub.logikraf.id
 	Cache     *cache.Cache
+	LupaSandi *LupaSandiManager
+}
+
+// LupaSandiLangkah1 — teruskan ke LupaSandi manager.
+func (a *Auth) LupaSandiLangkah1(ctx context.Context, emailOrPhone string) (LupaSandiResult, error) {
+	if a.LupaSandi == nil {
+		return LupaSandiResult{}, errors.New("lupa sandi belum dikonfigurasi")
+	}
+	return a.LupaSandi.LupaSandiLangkah1(ctx, emailOrPhone)
+}
+
+// LupaSandiLangkah2 — verifikasi token & reset password.
+func (a *Auth) LupaSandiLangkah2(ctx context.Context, token, passwordBaru string) error {
+	if a.LupaSandi == nil {
+		return errors.New("lupa sandi belum dikonfigurasi")
+	}
+	return a.LupaSandi.LupaSandiLangkah2(ctx, token, passwordBaru)
 }
 
 var (

@@ -66,6 +66,8 @@ func main() {
 		BaseURL:   cfg.BaseURL,
 		Cache:     cacheStore,
 	}
+	// Lupa sandi: delegate ke paket lupa_sandi.
+	auth.LupaSandi = usecase.NewLupaSandi(store, notify.New())
 
 	census := &usecase.Census{Store: store, Storage: objStore}
 

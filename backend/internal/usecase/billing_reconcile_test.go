@@ -21,7 +21,9 @@ type notifierDiam struct{}
 
 func (notifierDiam) SendOTP(string, string, string) error        { return nil }
 func (notifierDiam) SendInviteLink(string, string, string) error { return nil }
-func (notifierDiam) SendTagihan(string, string, string) error    { return nil }
+func (n notifierDiam) SendLupaSandi(string, string, string) error    { return nil }
+func (n notifierDiam) SendTagihan(string, string, string) error    { return nil }
+
 
 // TestRekonsiliasiQRIS — inti perbaikan: tagihan yang SUDAH dibayar warga harus
 // lunas otomatis dari cron, tanpa ada yang menekan "Cek status".

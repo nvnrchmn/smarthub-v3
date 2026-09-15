@@ -116,6 +116,40 @@ func (s *Server) Logout(c fiber.Ctx) error {
 	return c.JSON(fiber.Map{"dicabut": true})
 }
 
+// LupaSandiLangkah1 — minta kode reset password.
+// Aman: respons selalu "jika terdaftar, kode terkirim" — tidak bocor siapa yang terdaftar.
+func (s *Server) LupaSandiLangkah1(c fiber.Ctx) error {
+	var in struct {
+		Email string `json:"email"`
+	}
+	if err := c.Bind().JSON(&in); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "data tidak valid"})
+	}
+	res, err := s.Auth.LupaSandiLangkah1(c.Context(), in.Email)
+	if err != nil {
+		code, msg := errStatus(err)
+		return c.Status(code).JSON(fiber.Map{"error": msg})
+	}
+	// Sengaja tidak memberi tahu apakah email terdaftar.
+	return c.JSON(fiber.Map{"status": "jika terdaftar, kode terkirim", "dikirim": res.Dikirim, "saluran": res.Saluran})
+}
+
+// LupaSandiLangkah2 — verifikasi kode dan atur ulang password.
+func (s *Server) LupaSandiLangkah2(c fiber.Ctx) error {
+	var in struct {
+		Token       string `json:"token"`
+		PasswordBar string `json:"password_baru"`
+	}
+	if err := c.Bind().JSON(&in); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "data tidak valid"})
+	}
+	if err := s.Auth.LupaSandiLangkah2(c.Context(), in.Token, in.PasswordBar); err != nil {
+		code, msg := errStatus(err)
+		return c.Status(code).JSON(fiber.Map{"error": msg})
+	}
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "password diubah"})
+}
+
 // CreateInvite — hanya pengelola/sekretaris (dijaga RequireRoles + RBAC).
 func (s *Server) CreateInvite(c fiber.Ctx) error {
 	sub, _ := c.Locals("subject").(*domain.SubjectContext)

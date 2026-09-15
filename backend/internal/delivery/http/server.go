@@ -145,6 +145,10 @@ func (s *Server) Router() *fiber.App {
 	api.Post("/auth/invite/accept", public, s.AcceptInvite)
 	api.Post("/auth/invite/resend-otp", public, s.ResendOTP)
 
+	// Lupa sandi: dua langkah (1) minta kode / (2) atur ulang password.
+	api.Post("/auth/forgot-password", public, s.LupaSandiLangkah1)
+	api.Post("/auth/reset-password", public, s.LupaSandiLangkah2)
+
 	auth := api.Group("", s.RequireAuth())
 	auth.Get("/me", s.Me)
 	// Keluar: mencabut token yang sedang dipakai (bukan menonaktifkan akun).

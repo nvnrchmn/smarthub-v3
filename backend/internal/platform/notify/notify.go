@@ -50,6 +50,13 @@ func (s *Sender) SendTagihan(phone, pesan, tenantName string) error {
 	return s.send(phone, pesan+tenantSuffix(tenantName))
 }
 
+// SendLupaSandi — kirim kode reset password ke WhatsApp pengguna.
+func (s *Sender) SendLupaSandi(phone, code, tenantName string) error {
+	msg := "Kode reset password Smarthub" + tenantSuffix(tenantName) + ": " + code +
+		" (berlaku 1 jam). Jangan bagikan kode ini kepada siapa pun."
+	return s.send(phone, msg)
+}
+
 // SendInviteLink — tautan aktivasi (berlaku 7 hari).
 func (s *Sender) SendInviteLink(phone, link, tenantName string) error {
 	msg := "Undangan Smarthub" + tenantSuffix(tenantName) + ": aktivasi akun Anda di " + link +
