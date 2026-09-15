@@ -10,6 +10,7 @@ import (
 
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/domain"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/pkg/security"
+	"github.com/nvnrchmn/smarthub-v3/backend/internal/platform/cache"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/usecase"
 )
 
@@ -19,6 +20,7 @@ type Server struct {
 	Billing     *usecase.Billing
 	Reports     *usecase.Reports
 	Superadmin  *usecase.Superadmin
+	Cache       *cache.Cache
 }
 
 // Auth — middleware: verifikasi JWT, lalu pastikan akun masih ACTIVE di database
@@ -33,11 +35,19 @@ func (s *Server) RequireAuth() fiber.Handler {
 		if err != nil {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
 		}
+		// Token yang sudah dicabut (pengguna menekan Keluar) ditolak walau
+		// tanda tangannya masih sah dan belum kedaluwarsa.
+		if s.Auth.TokenDicabut(c.Context(), claims.ID) {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "sesi sudah diakhiri"})
+		}
 		sub, err := s.Auth.SubjectFromToken(c.Context(), claims.UserID, claims.TenantID)
 		if err != nil {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "akun tidak aktif"})
 		}
 		c.Locals("subject", sub)
+		// Disimpan agar handler (mis. Logout) bisa membaca jti token yang sedang
+		// dipakai tanpa mengurai ulang header Authorization.
+		c.Locals("claims", claims)
 		return c.Next()
 	}
 }
@@ -88,16 +98,25 @@ func (s *Server) Router() *fiber.App {
 	})
 
 	// Global rate limiter per-IP (120 req/menit) untuk semua route /api/* (SM01-LIMIT).
+	// Storage=Redis dipakai bila tersedia: batasnya tetap berlaku setelah service
+	// di-restart. Bila Redis mati, limiter otomatis kembali ke memori proses.
 	app.Use("/api", limiter.New(limiter.Config{
 		Max:        120,
 		Expiration: time.Minute,
+		Storage:    cache.NewStorage(s.Cache),
 	}))
 
 	app.Get("/health", s.health)
 	app.Get("/api/health", s.health)
 
 	api := app.Group("/api")
-	public := limiter.New(limiter.Config{Max: 15, Expiration: time.Minute})
+	// Pembatas ketat untuk jalur masuk (login, aktivasi, OTP). Di Redis supaya
+	// menyerang lewat percobaan berulang tidak cukup dengan menunggu restart.
+	public := limiter.New(limiter.Config{
+		Max:        15,
+		Expiration: time.Minute,
+		Storage:    cache.NewStorage(s.Cache),
+	})
 	api.Post("/superadmin/login", public, s.SuperadminLogin)
 	api.Get("/superadmin/me", s.RequireSuperadmin(), s.SuperadminMe)
 	api.Get("/superadmin/tenants", s.RequireSuperadmin(), s.SuperadminTenants)
@@ -111,6 +130,8 @@ func (s *Server) Router() *fiber.App {
 
 	auth := api.Group("", s.RequireAuth())
 	auth.Get("/me", s.Me)
+	// Keluar: mencabut token yang sedang dipakai (bukan menonaktifkan akun).
+	auth.Post("/auth/logout", s.Logout)
 	auth.Post("/invite", RequireRoles(domain.RoleTenantManager, domain.RoleSecretary), s.CreateInvite)
 
 	// Sensus: warga mengurus datanya sendiri; pengurus memeriksa & memutuskan.

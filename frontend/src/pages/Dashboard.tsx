@@ -53,8 +53,9 @@ export default function Dashboard() {
           </Link>
           <button
             onClick={() => {
-              auth.clear()
-              nav('/masuk')
+              // Server mencabut token ini lebih dulu, lalu keluar. Berbeda dari
+              // sekadar menghapus token di peramban, sesi di server ikut mati.
+              void auth.logout().then(() => nav('/masuk'))
             }}
             className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-ink2"
           >

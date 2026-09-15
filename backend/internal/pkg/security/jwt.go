@@ -1,6 +1,8 @@
 package security
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"time"
 
@@ -22,17 +24,33 @@ func GenerateToken(userID, tenantID, role, secret string) (string, error) {
 	if secret == "" {
 		return "", errors.New("JWT_SECRET belum diisi")
 	}
+	jti, err := NewTokenID()
+	if err != nil {
+		return "", err
+	}
 	claims := Claims{
 		UserID:   userID,
 		TenantID: tenantID,
 		Role:     role,
 		RegisteredClaims: jwt.RegisteredClaims{
+			// ID (jti) unik per token: inilah yang dicatat di daftar-tolak saat
+			// pengguna keluar, sehingga token bisa dicabut sebelum kedaluwarsa.
+			ID:        jti,
 			Subject:   userID,
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(tokenTTL)),
 		},
 	}
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(secret))
+}
+
+// NewTokenID membuat ID token acak 128-bit (hex 32 karakter).
+func NewTokenID() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
 }
 
 func ParseToken(token, secret string) (*Claims, error) {

@@ -87,7 +87,7 @@ export default function Sensus() {
             {roles.some((r) => ['SECRETARY', 'TENANT_MANAGER'].includes(r)) && (
               <button className="btn-ghost" onClick={() => nav('/verifikasi')}>Verifikasi</button>
             )}
-            <button className="btn-ghost" onClick={() => { auth.clear(); nav('/masuk') }}>Keluar</button>
+            <button className="btn-ghost" onClick={() => { void auth.logout().then(() => nav('/masuk')) }}>Keluar</button>
           </div>
         </div>
       </header>

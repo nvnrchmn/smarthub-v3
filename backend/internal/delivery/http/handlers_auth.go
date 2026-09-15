@@ -9,6 +9,7 @@ import (
 
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/db"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/domain"
+	"github.com/nvnrchmn/smarthub-v3/backend/internal/pkg/security"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/usecase"
 )
 
@@ -95,6 +96,24 @@ func (s *Server) Me(c fiber.Ctx) error {
 	sub, _ := c.Locals("subject").(*domain.SubjectContext)
 	return c.JSON(fiber.Map{"user_id": sub.AccountID, "tenant_id": sub.TenantID,
 		"roles": sub.AppRoles, "status": sub.LifecycleStatus})
+}
+
+// Logout — mencabut token yang sedang dipakai. Setelah ini token itu DITOLAK
+// walau tanda tangannya masih sah dan belum kedaluwarsa (lihat pemeriksaan
+// TokenDicabut di RequireAuth).
+//
+// Yang dicabut adalah TOKEN-nya, bukan akunnya: perangkat lain yang sudah
+// masuk tetap bisa dipakai. Pesan galat sengaja berisi "dicabut": false saat
+// daftar-tolak mati, supaya klien tidak mengira sesinya sudah benar dicabut.
+func (s *Server) Logout(c fiber.Ctx) error {
+	claims, _ := c.Locals("claims").(*security.Claims)
+	if err := s.Auth.Logout(c.Context(), claims); err != nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+			"dicabut": false,
+			"error":   "sesi lokal diakhiri, tetapi pencabutan di server gagal",
+		})
+	}
+	return c.JSON(fiber.Map{"dicabut": true})
 }
 
 // CreateInvite — hanya pengelola/sekretaris (dijaga RequireRoles + RBAC).

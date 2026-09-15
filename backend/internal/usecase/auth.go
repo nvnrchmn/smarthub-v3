@@ -10,6 +10,7 @@ import (
 
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/domain"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/pkg/security"
+	"github.com/nvnrchmn/smarthub-v3/backend/internal/platform/cache"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/platform/notify"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/repository/postgres"
 )
@@ -25,6 +26,7 @@ type Auth struct {
 	Notify    Notifier
 	JWTSecret string
 	BaseURL   string // dasar tautan aktivasi, mis. https://smarthub.logikraf.id
+	Cache     *cache.Cache
 }
 
 var (

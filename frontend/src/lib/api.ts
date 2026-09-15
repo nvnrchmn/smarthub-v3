@@ -11,6 +11,26 @@ export const auth = {
   get: () => localStorage.getItem(TOKEN_KEY),
   set: (t: string) => localStorage.setItem(TOKEN_KEY, t),
   clear: () => localStorage.removeItem(TOKEN_KEY),
+  // Keluar: minta server MENCABUT token ini, lalu bersihkan token lokal.
+  //
+  // Token lokal selalu dihapus — juga saat pencabutan gagal (mis. Redis mati) —
+  // supaya pengguna benar-benar keluar dari perangkat ini. Kembaliannya
+  // memberi tahu apakah server benar-benar mencabut, bukan sekadar menghapus
+  // di sisi peramban.
+  logout: async (): Promise<boolean> => {
+    const token = localStorage.getItem(TOKEN_KEY)
+    let dicabut = false
+    if (token) {
+      try {
+        const r = await request<{ dicabut: boolean }>('/auth/logout', { method: 'POST' })
+        dicabut = r.dicabut
+      } catch {
+        dicabut = false
+      }
+    }
+    localStorage.removeItem(TOKEN_KEY)
+    return dicabut
+  },
 }
 
 export class ApiError extends Error {

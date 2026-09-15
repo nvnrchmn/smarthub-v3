@@ -8,6 +8,7 @@ import (
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/db"
 	delivery "github.com/nvnrchmn/smarthub-v3/backend/internal/delivery/http"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/pkg/crypto"
+	"github.com/nvnrchmn/smarthub-v3/backend/internal/platform/cache"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/platform/hub"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/platform/notify"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/platform/storage"
@@ -25,6 +26,14 @@ func main() {
 	log.Println("database connected")
 
 	store := postgres.New(db.Pool)
+
+	// Redis: percepatan, bukan syarat hidup. Dipakai untuk tiga hal —
+	// pembatas laju yang tahan restart, daftar-tolak token (logout), dan
+	// OTP lupa sandi. Kalau Redis mati, aplikasi tetap melayani.
+	cacheStore := cache.New(cfg.RedisAddr)
+	if !cacheStore.Enabled() {
+		log.Println("PERINGATAN: cache/Redis tidak aktif — pembatas laju kembali ke memori proses dan logout tidak dapat mencabut token")
+	}
 
 	// Kunci enkripsi data pribadi (NIK/KK). Wajib: tanpa ini API tidak boleh
 	// melayani karena data sensus harus tersimpan terenkripsi.
@@ -55,6 +64,7 @@ func main() {
 		Notify:    notify.New(),
 		JWTSecret: cfg.JWTSecret,
 		BaseURL:   cfg.BaseURL,
+		Cache:     cacheStore,
 	}
 
 	census := &usecase.Census{Store: store, Storage: objStore}
@@ -75,6 +85,7 @@ func main() {
 		Billing:    billing,
 		Reports:    reports,
 		Superadmin: superadmin,
+		Cache:      cacheStore,
 	}
 
 	log.Printf("smarthub-api listening on %s:%s", cfg.Host, cfg.Port)
