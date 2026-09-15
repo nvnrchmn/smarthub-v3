@@ -15,12 +15,13 @@ import (
 )
 
 type Server struct {
-	Auth        *usecase.Auth
-	Census      *usecase.Census
-	Billing     *usecase.Billing
-	Reports     *usecase.Reports
-	Superadmin  *usecase.Superadmin
-	Cache       *cache.Cache
+	Auth           *usecase.Auth
+	Census         *usecase.Census
+	Billing        *usecase.Billing
+	Reports        *usecase.Reports
+	Superadmin     *usecase.Superadmin
+	Cache          *cache.Cache
+	AllowedOrigins string
 }
 
 // Auth — middleware: verifikasi JWT, lalu pastikan akun masih ACTIVE di database
@@ -91,13 +92,16 @@ func (s *Server) Router() *fiber.App {
 	})
 
 	// CORS: hanya origin resmi yang diizinkan (SM01-CORS).
-	app.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"https://smarthub.logikraf.id", "http://localhost:5173"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
-		AllowCredentials: true,
-		MaxAge:           86400,
-	}))
+		// AllowedOrigins dibaca dari env CORS_ALLOWED_ORIGINS — tidak lagi
+		// hardcode, sehingga origin berbeda per environment tanpa re-deploy.
+		corsOrigins := strings.Split(s.AllowedOrigins, ",")
+		app.Use(cors.New(cors.Config{
+			AllowOrigins: corsOrigins,
+			AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+			AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+			AllowCredentials: true,
+			MaxAge:           86400,
+		}))
 
 	// Security headers (SM01-HEADERS).
 	app.Use(func(c fiber.Ctx) error {

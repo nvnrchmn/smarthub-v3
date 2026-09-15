@@ -80,12 +80,13 @@ func main() {
 	reports := &usecase.Reports{Store: store, Notify: auth.Notify}
 
 	srv := &delivery.Server{
-		Auth:       auth,
-		Census:     census,
-		Billing:    billing,
-		Reports:    reports,
-		Superadmin: superadmin,
-		Cache:      cacheStore,
+		Auth:           auth,
+		Census:         census,
+		Billing:        billing,
+		Reports:        reports,
+		Superadmin:     superadmin,
+		Cache:          cacheStore,
+		AllowedOrigins: cfg.AllowedOrigins,
 	}
 
 	log.Printf("smarthub-api listening on %s:%s", cfg.Host, cfg.Port)

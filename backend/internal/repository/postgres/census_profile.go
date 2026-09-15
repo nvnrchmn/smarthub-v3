@@ -168,13 +168,19 @@ func (s *Store) GetProfileByID(ctx context.Context, tenantID, id string) (*domai
 	return out, err
 }
 
-// ListProfiles — daftar sensus; status kosong berarti semua. Data PII tetap tersamar.
-func (s *Store) ListProfiles(ctx context.Context, tenantID, status string, limit int) ([]domain.ResidentProfile, error) {
+// ListProfiles — daftar sensus dengan paginasi. offset=0 berarti dari awal.
+func (s *Store) ListProfiles(ctx context.Context, tenantID, status string, limit, offset int) ([]domain.ResidentProfile, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
 	out := []domain.ResidentProfile{}
 	err := s.WithTenant(ctx, tenantID, func(tx pgx.Tx) error {
 		rows, err := tx.Query(ctx, `select `+profileCols+` from `+profileFrom+`
 			where ($1 = '' or p.verification_status = $1)
-			order by p.updated_at desc limit $2`, status, limit)
+			order by p.updated_at desc limit $2 offset $3`, status, limit, offset)
 		if err != nil {
 			return err
 		}
@@ -191,7 +197,15 @@ func (s *Store) ListProfiles(ctx context.Context, tenantID, status string, limit
 	return out, err
 }
 
-// SetVerification — keputusan Sekretaris/Ketua atas kelengkapan dokumen.
+// CountProfiles — jumlah profil yang memenuhi filter (untuk paginasi).
+func (s *Store) CountProfiles(ctx context.Context, tenantID, status string) (int, error) {
+	var n int
+	err := s.WithTenant(ctx, tenantID, func(tx pgx.Tx) error {
+		return tx.QueryRow(ctx, `select count(*) from resident_profiles p
+			where ($1 = '' or p.verification_status = $1)`, status).Scan(&n)
+	})
+	return n, err
+}
 func (s *Store) SetVerification(ctx context.Context, tenantID, id, status, byUser, reason string) error {
 	return s.WithTenant(ctx, tenantID, func(tx pgx.Tx) error {
 		_, err := tx.Exec(ctx, `update resident_profiles

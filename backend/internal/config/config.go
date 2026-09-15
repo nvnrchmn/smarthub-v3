@@ -15,6 +15,7 @@ type Config struct {
 	MinioAccess    string
 	MinioSecret    string
 	MinioBucketPII string
+	AllowedOrigins string // dipisah koma, mis. "https://smarthub.logikraf.id,http://localhost:5173"
 }
 
 func Load() Config {
@@ -37,5 +38,6 @@ func Load() Config {
 		MinioAccess:    get("MINIO_ACCESS_KEY", ""),
 		MinioSecret:    get("MINIO_SECRET_KEY", ""),
 		MinioBucketPII: get("MINIO_BUCKET_PII", "smarthub-pii"),
+		AllowedOrigins:  get("CORS_ALLOWED_ORIGINS", "https://smarthub.logikraf.id"),
 	}
 }

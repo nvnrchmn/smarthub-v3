@@ -10,11 +10,15 @@ on:
       - 'LICENSE'
   workflow_dispatch:
 
-# Satu job: build lalu deploy langsung. Sengaja TANPA upload/download artefak
-# supaya storage Actions tidak menumpuk (kuota akun hanya 0,5 GB).
+# Batas waktu global: kalau deploy menggantung (mis. jaringan runner↔VPS putus),
+# job dibatalkan setelah 12 menit — tidak menunggu 6 menit default GitHub.
+timeout-minutes: 12
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    # Batas waktu per-job sebagai pengaman kedua.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -55,6 +59,14 @@ jobs:
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
             frontend/dist/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/www/wwwroot/smarthub.logikraf.id/
 
+      - name: Backup binary & DB sebelum deploy
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "sudo cp /opt/smarthub/bin/smarthub-api /opt/smarthub/bin/smarthub-api.bak 2>/dev/null; \
+             sudo docker exec smarthub_db pg_dump -U smarthub -d smarthub -f /tmp/smarthub-pre-deploy.sql 2>/dev/null || true; \
+             echo 'selesai'"
+
       - name: Deploy binary
         run: |
           rsync -avz --chmod=F755 --rsync-path="sudo rsync" \
@@ -74,4 +86,21 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
-            "sudo systemctl restart smarthub-api && sleep 3 && curl -fsS http://127.0.0.1:8082/health"
+            "sudo systemctl restart smarthub-api && \
+             for i in 1 2 3 4 5; do \
+               if curl -fsS http://127.0.0.1:8082/health >/dev/null 2>&1; then \
+                 echo 'health OK'; exit 0; \
+               fi; \
+               echo \"percobaan \$i/5...\"; sleep 3; \
+             done; \
+             echo 'health check GAGAL setelah 5 percobaan'; exit 1"
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "sudo cp /opt/smarthub/bin/smarthub-api.bak /opt/smarthub/bin/smarthub-api 2>/dev/null; \
+             sudo docker exec -i smarthub_db psql -q -U smarthub -d smarthub -f /tmp/smarthub-pre-deploy.sql 2>/dev/null || true; \
+             sudo systemctl restart smarthub-api; \
+             echo 'rollback selesai'"

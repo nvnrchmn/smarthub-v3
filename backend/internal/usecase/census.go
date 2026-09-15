@@ -1,11 +1,12 @@
 package usecase
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
-	"path"
+	"net/http"
 	"regexp"
 	"strings"
 	"time"
@@ -71,14 +72,18 @@ func (c *Census) MyProfile(ctx context.Context, sub *domain.SubjectContext) (*do
 }
 
 // List — daftar sensus untuk pengurus (data tetap tersamar).
-func (c *Census) List(ctx context.Context, sub *domain.SubjectContext, status string, limit int) ([]domain.ResidentProfile, error) {
+func (c *Census) List(ctx context.Context, sub *domain.SubjectContext, status string, limit, offset int) ([]domain.ResidentProfile, error) {
 	if !c.isStaff(sub) {
 		return nil, ErrForbidden
 	}
-	if limit <= 0 || limit > 200 {
-		limit = 100
+	return c.Store.ListProfiles(ctx, sub.TenantID, status, limit, offset)
+}
+
+func (c *Census) Count(ctx context.Context, sub *domain.SubjectContext, status string) (int, error) {
+	if !c.isStaff(sub) {
+		return 0, ErrForbidden
 	}
-	return c.Store.ListProfiles(ctx, sub.TenantID, status, limit)
+	return c.Store.CountProfiles(ctx, sub.TenantID, status)
 }
 
 // Detail — satu profil. Warga hanya boleh membuka miliknya sendiri.
@@ -154,6 +159,10 @@ func (c *Census) Verify(ctx context.Context, sub *domain.SubjectContext, id, sta
 }
 
 // UploadDocument — menyimpan KTP/KK ke bucket privat.
+//
+// Keamanan: tipe konten DARI ISI BERKAS (512 byte pertama), bukan dari header
+// Content-Type klien yang bisa dipalsukan. Seluruh berkas dibaca ke buffer
+// dengan batas 8 MB — melebihi itu ditolak sebelum sempat diproses.
 func (c *Census) UploadDocument(ctx context.Context, sub *domain.SubjectContext, id, kind string, r io.Reader, size int64, ctype string) (string, error) {
 	kind = strings.ToUpper(kind)
 	if kind != "KTP" && kind != "KK" {
@@ -161,11 +170,6 @@ func (c *Census) UploadDocument(ctx context.Context, sub *domain.SubjectContext,
 	}
 	if size <= 0 || size > 8<<20 {
 		return "", fmt.Errorf("%w: ukuran dokumen maksimal 8 MB", ErrBadInput)
-	}
-	switch {
-	case strings.HasPrefix(ctype, "image/"), ctype == "application/pdf":
-	default:
-		return "", fmt.Errorf("%w: dokumen harus gambar atau PDF", ErrBadInput)
 	}
 	if c.Storage == nil {
 		return "", fmt.Errorf("penyimpanan dokumen belum dikonfigurasi")
@@ -185,12 +189,30 @@ func (c *Census) UploadDocument(ctx context.Context, sub *domain.SubjectContext,
 	if kind == "KK" && p.FamilyCardID == "" {
 		return "", fmt.Errorf("%w: nomor KK belum diisi pada profil", ErrBadInput)
 	}
-	ext := path.Ext(strings.Split(ctype, ";")[0])
-	if ext == "" {
-		ext = ".bin"
+
+	// Baca ke buffer dengan batas 8 MB. io.LimitedReader memastikan tidak
+	// lebih dari itu yang dibaca meskipun klien mengirim lebih.
+	buf, err := io.ReadAll(io.LimitReader(r, 8<<20))
+	if err != nil {
+		return "", fmt.Errorf("%w: gagal membaca berkas", ErrBadInput)
 	}
+	if len(buf) == 0 {
+		return "", fmt.Errorf("%w: berkas kosong", ErrBadInput)
+	}
+
+	// Deteksi tipe konten dari isi berkas, bukan dari header klien.
+	// http.DetectContentType membaca 512 byte pertama dan mengembalikan MIME.
+	aktual := http.DetectContentType(buf)
+	switch {
+	case strings.HasPrefix(aktual, "image/"):
+	case aktual == "application/pdf":
+	default:
+		return "", fmt.Errorf("%w: dokumen harus gambar atau PDF (terdeteksi: %s)", ErrBadInput, aktual)
+	}
+
+	ext := ekstensiDariMIME(aktual)
 	key := fmt.Sprintf("%s/%s/%s-%d%s", sub.TenantID, id, strings.ToLower(kind), time.Now().Unix(), ext)
-	if err := c.Storage.Put(ctx, key, r, size, ctype); err != nil {
+	if err := c.Storage.Put(ctx, key, bytes.NewReader(buf), int64(len(buf)), aktual); err != nil {
 		return "", err
 	}
 	if kind == "KTP" {
@@ -204,6 +226,23 @@ func (c *Census) UploadDocument(ctx context.Context, sub *domain.SubjectContext,
 	_ = c.Store.LogAudit(ctx, sub.TenantID, sub.AccountID, "DOCUMENT_UPLOAD", "resident_profile", id,
 		map[string]any{"jenis": kind})
 	return key, nil
+}
+
+// ekstensiDariMIME mengembalikan ekstensi berkas dari tipe MIME yang dideteksi.
+func ekstensiDariMIME(mime string) string {
+	switch {
+	case strings.Contains(mime, "jpeg"):
+		return ".jpg"
+	case strings.Contains(mime, "png"):
+		return ".png"
+	case strings.Contains(mime, "gif"):
+		return ".gif"
+	case strings.Contains(mime, "webp"):
+		return ".webp"
+	case strings.Contains(mime, "pdf"):
+		return ".pdf"
+	}
+	return ".bin"
 }
 
 // DownloadDocument — pengurus (atau pemiliknya) mengambil dokumen; dicatat.

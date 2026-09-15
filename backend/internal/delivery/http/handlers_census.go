@@ -9,6 +9,7 @@ import (
 
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/domain"
 	"github.com/nvnrchmn/smarthub-v3/backend/internal/repository/postgres"
+	"github.com/nvnrchmn/smarthub-v3/backend/internal/usecase"
 )
 
 func (s *Server) subject(c fiber.Ctx) *domain.SubjectContext {
@@ -42,12 +43,28 @@ func (s *Server) SubmitMyProfile(c fiber.Ctx) error {
 
 // ListCensus — antrean/daftar sensus untuk pengurus.
 func (s *Server) ListCensus(c fiber.Ctx) error {
-	items, err := s.Census.List(c.Context(), s.subject(c), c.Query("status"), 0)
+	p := usecase.ParsePagination(c.Queries())
+	items, err := s.Census.List(c.Context(), s.subject(c), c.Query("status"), p.Per, p.Offset())
 	if err != nil {
 		code, msg := errStatus(err)
 		return c.Status(code).JSON(fiber.Map{"error": msg})
 	}
-	return c.JSON(fiber.Map{"items": items, "jumlah": len(items)})
+	total, err := s.Census.Count(c.Context(), s.subject(c), c.Query("status"))
+	if err != nil {
+		code, msg := errStatus(err)
+		return c.Status(code).JSON(fiber.Map{"error": msg})
+	}
+	lastPage := (total + p.Per - 1) / p.Per
+	if lastPage < 1 {
+		lastPage = 1
+	}
+	return c.JSON(usecase.Paginated[[]domain.ResidentProfile]{
+		Items:    items,
+		Total:    total,
+		Page:     p.Page,
+		PerPage:  p.Per,
+		LastPage: lastPage,
+	})
 }
 
 // CensusDetail — satu profil (data PII tetap tersamar).
