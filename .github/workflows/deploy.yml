@@ -10,10 +10,6 @@ on:
       - 'LICENSE'
   workflow_dispatch:
 
-# Batas waktu global: kalau deploy menggantung (mis. jaringan runner↔VPS putus),
-# job dibatalkan setelah 12 menit — tidak menunggu 6 menit default GitHub.
-timeout-minutes: 12
-
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -29,8 +25,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
-          # Cache dimatikan: cache Actions ikut memakan kuota storage akun (0,5 GB).
-          cache: false
+
 
       - name: Build frontend
         run: |
