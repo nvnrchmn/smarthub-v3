@@ -34,8 +34,8 @@ func main() {
 	paksa := flag.Bool("force", false, "abaikan tanggal terbit tenant")
 	flag.Parse()
 
-	if *cmd != "create-tenant" && *cmd != "generate-invoices" && *cmd != "reconcile-payments" && *cmd != "bootstrap-superadmin" {
-		log.Fatal("perintah tidak dikenal; pakai -cmd create-tenant | generate-invoices | reconcile-payments | bootstrap-superadmin")
+	if *cmd != "create-tenant" && *cmd != "generate-invoices" && *cmd != "reconcile-payments" && *cmd != "remind-invoices" && *cmd != "bootstrap-superadmin" {
+		log.Fatal("perintah tidak dikenal; pakai -cmd create-tenant | generate-invoices | reconcile-payments | remind-invoices | bootstrap-superadmin")
 	}
 	// Argumen ini hanya wajib untuk pembuatan tenant, bukan untuk tugas cron.
 	if *cmd == "create-tenant" && (*name == "" || *slug == "" || *email == "" || len(*password) < 8 || *adminDSN == "") {
@@ -61,6 +61,10 @@ func main() {
 	}
 	if *cmd == "reconcile-payments" {
 		reconcilePayments(store)
+		return
+	}
+	if *cmd == "remind-invoices" {
+		remindInvoices(store)
 		return
 	}
 	if *cmd == "bootstrap-superadmin" {
@@ -155,5 +159,34 @@ func reconcilePayments(store *postgres.Store) {
 	}
 	if total > 0 {
 		fmt.Printf("total tagihan dilunasi otomatis: %d\n", total)
+	}
+}
+
+// remindInvoices — dipanggil cron (mis. tiap jam): kirim pengingat ke penghuni
+// yang tagihannya belum dibayar dan sudah mendekati jatuh tempo.
+func remindInvoices(store *postgres.Store) {
+	ctx := context.Background()
+	daftar, err := store.Tenants(ctx)
+	if err != nil {
+		log.Fatalf("daftar tenant: %v", err)
+	}
+	notifier := notify.New()
+	total := 0
+	for _, t := range daftar {
+		b := &usecase.Billing{Store: store, Hub: hub.New(), Notify: notifier}
+		hasil, err := b.PengingatTunggakan(ctx, t.ID)
+		if err != nil {
+			log.Printf("tenant %s: pengingat gagal: %v", t.Nama, err)
+			continue
+		}
+		if hasil.Dikirim == 0 && hasil.Dilewati == 0 {
+			continue
+		}
+		fmt.Printf("%s: dikirim=%d dilewati=%d gagal=%d\n",
+			t.Nama, hasil.Dikirim, hasil.Dilewati, hasil.Gagal)
+		total += hasil.Dikirim
+	}
+	if total > 0 {
+		fmt.Printf("total pengingat terkirim: %d\n", total)
 	}
 }

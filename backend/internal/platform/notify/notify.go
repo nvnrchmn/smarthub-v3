@@ -64,6 +64,13 @@ func (s *Sender) SendInviteLink(phone, link, tenantName string) error {
 	return s.send(phone, msg)
 }
 
+// SendPengingatTunggakan — kirim pengingat tagihan yang belum dibayar.
+func (s *Sender) SendPengingatTunggakan(phone, pesan, tenantName string) error {
+	msg := "Pengingat Smarthub" + tenantSuffix(tenantName) + ": " + pesan +
+		". Harap segera lakukan pembayaran."
+	return s.send(phone, msg)
+}
+
 func tenantSuffix(name string) string {
 	if strings.TrimSpace(name) == "" {
 		return ""

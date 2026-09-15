@@ -16,10 +16,11 @@ import (
 )
 
 type Notifier interface {
-	SendLupaSandi(phone, code, tenantName string) error
 	SendOTP(phone, code, tenantName string) error
 	SendInviteLink(phone, link, tenantName string) error
 	SendTagihan(phone, pesan, tenantName string) error
+	SendLupaSandi(phone, code, tenantName string) error
+	SendPengingatTunggakan(phone, pesan, tenantName string) error
 }
 
 type Auth struct {
