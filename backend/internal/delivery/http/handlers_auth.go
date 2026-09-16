@@ -15,11 +15,22 @@ import (
 
 func (s *Server) health(c fiber.Ctx) error {
 	dbOK := db.Pool.Ping(c.Context()) == nil
+	redisOK := true
+	if s.Cache != nil {
+		redisOK = s.Cache.Ping(c.Context()) == nil
+	}
 	code, status := fiber.StatusOK, "ok"
 	if !dbOK {
 		code, status = fiber.StatusServiceUnavailable, "degraded"
+	} else if !redisOK {
+		code, status = fiber.StatusOK, "degraded"
 	}
-	return c.Status(code).JSON(fiber.Map{"status": status, "service": "smarthub-api", "database": dbOK})
+	return c.Status(code).JSON(fiber.Map{
+		"status":   status,
+		"service":  "smarthub-api",
+		"database": dbOK,
+		"redis":    redisOK,
+	})
 }
 
 // errStatus — pemetaan error usecase ke kode HTTP. Pesan sengaja umum supaya

@@ -35,6 +35,13 @@ func New(addr string) *Cache {
 
 func (c *Cache) Enabled() bool { return c != nil && c.rdb != nil }
 
+func (c *Cache) Ping(ctx context.Context) bool {
+	if !c.Enabled() {
+		return false
+	}
+	return c.rdb.Ping(ctx).Err() == nil
+}
+
 func (c *Cache) Client() *redis.Client {
 	if c == nil {
 		return nil

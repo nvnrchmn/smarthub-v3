@@ -66,29 +66,13 @@ jobs:
         run: |
           rsync -avz --chmod=F755 --rsync-path="sudo rsync" \
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-            backend/bin/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/smarthub/bin/
+            backend/bin/smarthub-api /usr/local/bin/smarthub-deploy.sh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/smarthub/bin/
 
-      - name: Apply migrations
-        run: |
-          for f in backend/migrations/*.sql; do
-            echo "applying $f"
-            ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-              ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
-              "sudo docker exec -i smarthub_db psql -q -v ON_ERROR_STOP=1 -U smarthub -d smarthub" < "$f"
-          done
-
-      - name: Restart service and verify
+      - name: Run health-gated deploy
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
-            "sudo systemctl restart smarthub-api && \
-             for i in 1 2 3 4 5; do \
-               if curl -fsS http://127.0.0.1:8082/health >/dev/null 2>&1; then \
-                 echo 'health OK'; exit 0; \
-               fi; \
-               echo \"percobaan \$i/5...\"; sleep 3; \
-             done; \
-             echo 'health check GAGAL setelah 5 percobaan'; exit 1"
+            "sudo /usr/local/bin/smarthub-deploy.sh /opt/smarthub/bin/smarthub-api"
 
       - name: Rollback on failure
         if: failure()
