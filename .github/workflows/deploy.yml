@@ -72,7 +72,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
-            "sudo /usr/local/bin/smarthub-deploy.sh /opt/smarthub/bin/smarthub-api"
+            "sudo /opt/smarthub/bin/smarthub-deploy.sh"
 
       - name: Rollback on failure
         if: failure()
