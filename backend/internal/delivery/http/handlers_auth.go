@@ -17,7 +17,7 @@ func (s *Server) health(c fiber.Ctx) error {
 	dbOK := db.Pool.Ping(c.Context()) == nil
 	redisOK := true
 	if s.Cache != nil {
-		redisOK = s.Cache.Ping(c.Context()) == nil
+		redisOK = s.Cache.Ping(c.Context())
 	}
 	code, status := fiber.StatusOK, "ok"
 	if !dbOK {
