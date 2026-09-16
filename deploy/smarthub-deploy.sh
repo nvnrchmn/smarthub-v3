@@ -17,7 +17,7 @@ if [ ! -f "${1:-}" ]; then echo "usage: $0 <path-to-new-binary>"; exit 2; fi
 cp -f "$1" "$BIN"
 chmod 755 "$BIN"
 log "binary baru terpasang: $1"
-systemctl reload smarthub-api 2>/dev/null || systemctl restart smarthub-api
+systemctl daemon-reload && systemctl restart smarthub-api
 log "service reloaded"
 for i in $(seq 1 $MAX_RETRIES); do
   sleep "$RETRY_SEC"
