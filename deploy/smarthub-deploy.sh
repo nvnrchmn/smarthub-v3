@@ -4,7 +4,7 @@ set -uo pipefail
 BIN=/opt/smarthub/bin/smarthub-api
 BACKUP=/opt/smarthub/backup/smarthub-api.prev
 LOG=/var/log/smarthub-deploy.log
-HEALTH_URL="http://127.0.0.1:8096/api/health"
+HEALTH_URL="http://127.0.0.1:8082/api/health"
 MAX_RETRIES=12
 RETRY_SEC=5
 log() { echo "$(date '+%F %T') $*" | tee -a "$LOG"; }
