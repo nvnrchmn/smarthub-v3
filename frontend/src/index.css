@@ -2,24 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Token semantic dari dokumen UI/UX (palet logikraf.id: brand #0052FF). */
+/* ============================================================
+   LINEAR-APP DESIGN SYSTEM untuk Smarthub v3
+   - Dark mode first, accent biru #0052FF
+   - Motion: rise-in, spring, shimmer
+   - Komponen: sidebar, state badge, empty state, command palette
+   ============================================================ */
+
+/* --- LIGHT MODE (default) --- */
 :root {
-  --bg-canvas: #F8FAFC;
-  --bg-surface: #FFFFFF;
-  --bg-subtle: #F3F4F6;
+  --bg-canvas: #FFFFFF;
+  --bg-surface: #F8FAFC;
+  --bg-subtle: #F1F5F9;
   --border-default: #E2E8F0;
   --text-primary: #0F172A;
   --text-secondary: #64748B;
   --text-muted: #94A3B8;
-  --brand-primary: #0052FF;
-  --brand-primary-hover: #0041CC;
-  --brand-accent: #10B981;
-  --status-success: #10B981;
-  --status-warning: #F59E0B;
-  --status-danger: #EF4444;
-  --status-info: #3B82F6;
+  --brand: #0052FF;
+  --brand-hover: #0041CC;
+  --brand-subtle: #EFF6FF;
+  --ok: #10B981;
+  --warn: #F59E0B;
+  --danger: #EF4444;
+  --info: #3B82F6;
 }
 
+/* --- DARK MODE --- */
 .dark {
   --bg-canvas: #0B0F19;
   --bg-surface: #111827;
@@ -28,6 +36,13 @@
   --text-primary: #F9FAFB;
   --text-secondary: #CBD5E1;
   --text-muted: #64748B;
+  --brand: #3B82F6;
+  --brand-hover: #60A5FA;
+  --brand-subtle: #1E3A5F;
+  --ok: #34D399;
+  --warn: #FBBF24;
+  --danger: #F87171;
+  --info: #60A5FA;
 }
 
 body {
@@ -35,63 +50,141 @@ body {
   font-feature-settings: 'cv11', 'ss01';
 }
 
-/* Motion: durasi lambat sebagai karakter produk (lihat UIUX.md 1.3). */
-@layer components {
-  .card {
-    @apply bg-surface border border-line rounded-2xl p-5
-           transition-all duration-slow ease-decelerate
-           hover:border-brand/40 hover:shadow-md;
-  }
+/* --- LINEAR COMPONENTS --- */
 
-  .animate-list > * {
-    animation: rise-in 600ms cubic-bezier(0, 0, 0.2, 1) both;
-  }
-  .animate-list > *:nth-child(1) { animation-delay: 0ms; }
-  .animate-list > *:nth-child(2) { animation-delay: 80ms; }
-  .animate-list > *:nth-child(3) { animation-delay: 160ms; }
-  .animate-list > *:nth-child(4) { animation-delay: 240ms; }
-  .animate-list > *:nth-child(5) { animation-delay: 320ms; }
-  .animate-list > *:nth-child(6) { animation-delay: 400ms; }
-
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold
-           transition-all duration-base ease-standard
-           disabled:opacity-50 disabled:cursor-not-allowed;
-  }
-  .btn-primary {
-    @apply btn bg-brand text-white shadow-sm shadow-brand/25
-           hover:bg-brandhover hover:-translate-y-px active:scale-[0.98] transition-all duration-base;
-  }
-  .btn-ghost {
-    @apply btn border border-line text-ink2 hover:text-ink hover:border-brand/40 hover:bg-subtle;
-  }
-  .btn-danger {
-    @apply btn bg-danger text-white hover:opacity-90 active:scale-[0.98];
-  }
-
-  .field {
-    @apply w-full rounded-xl border border-line bg-canvas px-3.5 py-2.5 text-sm text-ink
-           placeholder:text-muted outline-none
-           transition-all duration-base ease-standard
-           focus:border-brand focus:ring-4 focus:ring-brand/15;
-  }
-
-  .badge {
-    @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium
-           transition-all duration-slow ease-spring;
-  }
-
-  /* Blok teks panjang: 16px minimum agar nyaman dibaca warga di HP. */
-  .prose-id {
-    @apply text-[15px] leading-7 text-ink2;
-  }
-
-  .skeleton {
-    background-image: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.25), transparent);
-    background-size: 200% 100%;
-    @apply animate-shimmer rounded-xl bg-subtle;
-  }
+/* Nav item (sidebar) */
+.nav-item {
+  @apply relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-ink2
+         transition-all duration-base ease-standard;
 }
+.nav-item:hover {
+  @apply bg-subtle text-ink;
+}
+.nav-item.active {
+  @apply bg-brand-subtle text-brand;
+}
+.nav-item.active::before {
+  content: '';
+  @apply absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-brand;
+}
+
+/* State badge (Linear-style) */
+.state {
+  @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold;
+}
+.state-todo { @apply bg-subtle text-ink2; }
+.state-in-progress { @apply bg-info/15 text-info; }
+.state-done { @apply bg-ok/15 text-ok; }
+.state-canceled { @apply bg-line text-muted line-through; }
+.state-urgent { @apply bg-danger/15 text-danger; }
+
+/* Empty state */
+.empty-state {
+  @apply flex flex-col items-center justify-center rounded-2xl border border-dashed border-line
+         bg-surface px-8 py-16 text-center;
+}
+.empty-state-icon {
+  @apply mb-4 rounded-2xl bg-subtle p-4 text-2xl;
+}
+.empty-state h3 {
+  @apply mb-1 text-sm font-semibold text-ink;
+}
+.empty-state p {
+  @apply text-sm text-muted;
+}
+
+/* Card Linear-style */
+.card-linear {
+  @apply rounded-2xl border border-line bg-surface p-5
+         transition-all duration-slow ease-decelerate
+         hover:border-brand/30 hover:shadow-lg hover:shadow-brand/5;
+}
+
+/* Input modern */
+.input-linear {
+  @apply w-full rounded-xl border border-line bg-canvas px-3.5 py-2.5 text-sm text-ink
+         placeholder:text-muted outline-none
+         transition-all duration-base ease-standard
+         focus:border-brand focus:ring-4 focus:ring-brand/15;
+}
+
+/* Button variants */
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold
+         transition-all duration-base ease-standard
+         disabled:opacity-50 disabled:cursor-not-allowed;
+}
+.btn-primary {
+  @apply bg-brand text-white shadow-md shadow-brand/25
+         hover:bg-brandhover hover:-translate-y-px hover:shadow-lg hover:shadow-brand/30
+         active:scale-[0.98];
+}
+.btn-ghost {
+  @apply border border-line text-ink2 hover:text-ink hover:border-brand/40 hover:bg-subtle;
+}
+.btn-danger {
+  @apply bg-danger text-white hover:opacity-90 active:scale-[0.98];
+}
+.btn-icon {
+  @apply inline-flex items-center justify-center rounded-lg p-2 text-ink2
+         transition-all duration-base ease-standard hover:bg-subtle hover:text-ink;
+}
+
+/* Shimmer skeleton */
+.skeleton {
+  background-image: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.2), transparent);
+  background-size: 200% 100%;
+  @apply animate-shimmer rounded-xl bg-subtle;
+}
+
+/* Animasi list staggered */
+.animate-list > * {
+  animation: rise-in 600ms cubic-bezier(0, 0, 0.2, 1) both;
+}
+.animate-list > *:nth-child(1) { animation-delay: 0ms; }
+.animate-list > *:nth-child(2) { animation-delay: 80ms; }
+.animate-list > *:nth-child(3) { animation-delay: 160ms; }
+.animate-list > *:nth-child(4) { animation-delay: 240ms; }
+.animate-list > *:nth-child(5) { animation-delay: 240ms; }
+.animate-list > *:nth-child(6) { animation-delay: 320ms; }
+
+/* Modal scrim */
+.scrim {
+  @apply fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm;
+}
+
+/* Modal panel */
+.modal-panel {
+  @apply w-full max-w-lg rounded-2xl border border-line bg-surface p-6 shadow-2xl
+         animate-rise-in;
+}
+
+/* Toast */
+.toast {
+  @apply fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl border border-line
+         bg-surface px-4 py-3 shadow-2xl animate-rise-in;
+}
+
+/* Command palette */
+.cmd-palette {
+  @apply fixed left-1/2 top-[20%] z-50 w-full max-w-xl -translate-x-1/2 rounded-2xl border border-line
+         bg-surface shadow-2xl animate-rise-in;
+}
+.cmd-input {
+  @apply w-full border-b border-line bg-transparent px-4 py-3 text-sm text-ink outline-none placeholder:text-muted;
+}
+.cmd-item {
+  @apply flex items-center gap-3 px-4 py-2.5 text-sm text-ink2 transition-colors hover:bg-subtle;
+}
+.cmd-item.active {
+  @apply bg-brand-subtle text-brand;
+}
+
+/* Scrollbar minimalis */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { @apply rounded-full bg-line; }
+::-webkit-scrollbar-thumb:hover { @apply bg-muted; }
 
 /* Hormati preferensi pengguna: matikan gerak, jangan tunda data. */
 @media (prefers-reduced-motion: reduce) {

@@ -21,6 +21,7 @@ export default {
         // seperti bg-brand/10 bisa dipakai — var() tidak mendukung itu.
         brand: '#0052FF',
         brandhover: '#0041CC',
+        'brand-subtle': '#EFF6FF',
         accent: '#10B981',
         ok: '#10B981',
         warn: '#F59E0B',
