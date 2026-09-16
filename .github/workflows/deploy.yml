@@ -66,7 +66,7 @@ jobs:
         run: |
           rsync -avz --chmod=F755 --rsync-path="sudo rsync" \
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-            backend/bin/smarthub-api /usr/local/bin/smarthub-deploy.sh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/smarthub/bin/
+            backend/bin/smarthub-api deploy/smarthub-deploy.sh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/smarthub/bin/
 
       - name: Run health-gated deploy
         run: |
