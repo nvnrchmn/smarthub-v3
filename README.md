@@ -1,21 +1,44 @@
 # Smarthub v3
 
-Platform multi-tenant untuk RT/RW & perumahan: iuran (QRIS dinamis + kas tunai),
-sensus warga dengan data pribadi terenkripsi, persuratan, forum, dan lapak warga.
+Platform multi-tenant untuk perumahan: iuran (QRIS dinamis + kas tunai),
+sensus warga dengan data pribadi terenkripsi, dan pengingat tunggakan.
 
-Spesifikasi lengkap ada di tab **Issues** repo ini (PRD, ERD, Arsitektur, UI/UX).
+## Modul yang Sudah Ada
+
+| Modul | Status |
+|---|---|
+| Rekonsiliasi QRIS otomatis | ✅ Cron tiap 5 menit |
+| Kas tunai + setoran bank | ✅ |
+| Sensus warga + enkripsi AES | ✅ |
+| Sesi JWT + logout/cabut token | ✅ |
+| Lupa sandi via WhatsApp | ✅ |
+| Pengingat tunggakan via WhatsApp | ✅ |
+| Paginasi & validasi upload | ✅ |
+| Redis limiter (fallback memori) | ✅ |
+
+## Roadmap
+
+| Prioritas | Modul |
+|---|---|
+| Tinggi | Test jalur uang (invoice → bayar → rekonsiliasi) |
+| Tinggi | 2FA admin |
+| Tinggi | Limiter login per-IP |
+| Sedang | Laporan PDF (tunggakan, kas, sensus) |
+| Sedang | Health endpoint + rollback otomatis |
+| Rendah | Sitemap/PWA/analytics |
+| Undur | Persuratan, forum, lapak warga |
 
 ## Struktur
 
 - `backend/` — Go (Fiber), clean architecture. `cmd/api` = HTTP API, `internal/` = config, db, domain, usecase, repository, delivery.
 - `backend/migrations/` — SQL idempoten (aman dijalankan berulang oleh CI).
-- `frontend/` — React + Vite + TypeScript + Tailwind (design token dari dokumen UI/UX).
+- `frontend/` — React + Vite + TypeScript + Tailwind.
 - `deploy/` — unit systemd + vhost nginx + compose datastore.
 
 ## Infrastruktur (VPS)
 
 - Datastore dijalankan sebagai container (`/opt/smarthub/compose.yml`): PostgreSQL 17, Redis 7, MinIO — semuanya hanya bind ke 127.0.0.1.
-- Aplikasi berjalan sebagai service systemd `smarthub-api` (port 8082) di belakang nginx aaPanel.
+- Aplikasi berjalan sebagai service systemd `smarthub-api` (port 8096) di belakang nginx aaPanel.
 - Kredensial ada di `/etc/smarthub.env` (600) dan `/opt/smarthub/.env` (600) — **tidak pernah** masuk repo.
 
 ## Isolasi tenant
