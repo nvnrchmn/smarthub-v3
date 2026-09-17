@@ -163,3 +163,15 @@ Fase 0 (v3): OK. Fase 1 (onboarding): OK (commit 93c407b + 34dd51a + 4475a01). F
 - **Workflow**: menambah timeout 12 menit global + 10 menit per-job; health-check 5× dengan jeda 3 detik; backup binary + `pg_deploy` sebelum deploy; otomatis rollback (pulihkan binary + restart) bila health-check gagal.
 - **Bukti di produksi**: CI success; layanan 200; `/api/auth/forgot-password` 200 dengan respons "jika terdaftar"; `/api/auth/reset-password` 400/500 dengan token palsu; `/api/auth/logout` 401 tanpa token; `/api/census?hal=1&max=5` 401 tanpa auth (paginasi & auth bekerja).
 - **Catatan**: Untuk uji E2E penuh (forgot → cek WA → reset → login dengan password baru) dibutuhkan nomor WhatsApp terdaftar yang valid. Tidak bisa otomatis tanpa nomor uji. Saya siapkan skrip uji manual di `backend/cmd/test-reset-password/main.go` (jika ingin dijalankan dengan nomor sebenarnya).
+
+--- 2026-09-17 (Sprint 4-7 selesai) ---
+Sprint 7: Pengingat tunggakan — CLI remind-invoices, migrasi 0011, cron harian 08:00.
+Sprint 6: Health endpoint (/api/health, DB + Redis), deploy script (smarthub-deploy.sh) dengan rollback otomatis.
+Sprint 5: ErrorBoundary, halaman NotFound (404), lazy loading + Suspense di App.tsx.
+Sprint 4: README jujur — hapus fitur fiktif (persuratan, forum, lapak warga), tambah modul + roadmap.
+Sprint 3: Redis limiter, jti + logout, lupa sandi (reset_password, 0009), scope guard.
+Sprint 2: Test jalur uang — rupiah(), isStaff(Penagihan/RoleKosong/BukanAktif), gerbang penagihan.
+Sprint 1: Rekonsiliasi QRIS otomatis (cron tiap 5 menit, CLI reconcile-payments).
+UI/UX: Linear-app design system — dark mode default (#0f0f14), accent indigo/violet, Plus Jakarta Sans font, modern layout per role (Superadmin, Tenant Manager, Bendahara, Sekretaris, Warga).
+Penting: model yang terverifikasi saat ini — `meituan/longcat-2.0:free` (lulus semua tingkat), `cohere/north-mini-code:free`, `nvidia/nemotron-3-super-120b-a12b:free`. `kimi-k3` belum diuji. Free tier bukan untuk produksi.
+Bukti: `go test ./internal/usecase/` OK; CI success; server service active; health endpoint 200; frontend HTTPS 200; deploy script jalan.
