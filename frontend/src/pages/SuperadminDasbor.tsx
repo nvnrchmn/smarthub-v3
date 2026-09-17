@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { superadmin, type AuditLogEntry, type TenantList } from '../lib/api'
 
-// Tanggal ringkas ala Indonesia: 13 Sep 2026, 07:44.
 function tgl(iso?: string) {
   if (!iso) return '-'
   const d = new Date(iso)
@@ -24,8 +23,8 @@ export default function SuperadminDasbor() {
 
   useEffect(() => {
     superadmin.me().catch(() => nav('/superadmin'))
-    superadmin.listTenants().then(setTenants).catch((e) => setPesan(e.message))
-    superadmin.auditLog().then(setAudit).catch(() => [])
+    superadmin.listTenants().then(setTenants).catch((e: Error) => setPesan(e.message))
+    superadmin.auditLog().then(setAudit).catch(() => setAudit([]))
     superadmin
       .allSettings()
       .then((s) => {
@@ -42,7 +41,7 @@ export default function SuperadminDasbor() {
       await superadmin.setSetting('xendit_key', xenditKey)
       await superadmin.setSetting('xendit_prefix', xenditPrefix)
       setSukses('Kunci Xendit tersimpan')
-    } catch (e) {
+    } catch (e: unknown) {
       setPesan(e instanceof Error ? e.message : 'gagal menyimpan')
     }
   }
@@ -55,7 +54,7 @@ export default function SuperadminDasbor() {
       await superadmin.resetPassword(oldPw, newPw)
       setSukses('Kata sandi superadmin diganti')
       setOldPw(''); setNewPw('')
-    } catch (e) {
+    } catch (e: unknown) {
       setPesan(e instanceof Error ? e.message : 'gagal ganti kata sandi')
     }
   }
@@ -66,160 +65,124 @@ export default function SuperadminDasbor() {
   }
 
   return (
-    <div className="min-h-screen bg-canvas">
-      <header className="sticky top-0 z-10 border-b border-line bg-surface px-6 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="font-bold">Superadmin Platform</h1>
-          <p className="text-xs text-ink2">Logikraf — manajemen tenant & audit</p>
+    <div className="min-h-screen bg-[#0a0a0f] text-slate-100 font-sans flex flex-col">
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0f0f14]/80 backdrop-blur-xl px-6 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shadow-[0_0_15px_rgba(129,140,248,0.4)]">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          </div>
+          <div>
+            <h1 className="text-sm font-bold tracking-tight">Superadmin Platform</h1>
+            <p className="text-[10px] text-slate-400">Logikraf — manajemen tenant & audit</p>
+          </div>
         </div>
-        <button onClick={keluar} className="btn-ghost">Keluar</button>
+        <button onClick={keluar} className="text-xs px-3 py-1.5 rounded-full border border-white/10 hover:bg-white/5 hover:border-white/20 transition-colors text-slate-300 hover:text-white">
+          Keluar
+        </button>
       </header>
 
-      <main className="mx-auto max-w-5xl p-6 space-y-6">
+      <main className="mx-auto max-w-4xl px-6 py-8 flex-1 space-y-8">
+        {pesan && <div className="rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-300">{pesan}</div>}
+        {sukses && <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 text-sm text-emerald-300">{sukses}</div>}
+
         <div className="flex gap-2">
-          <button onClick={() => setTab('tenants')} className={`btn-ghost ${tab === 'tenants' ? 'ring-2 ring-brand' : ''}`}>
-            Tenant ({tenants.length})
-          </button>
-          <button onClick={() => setTab('audit')} className={`btn-ghost ${tab === 'audit' ? 'ring-2 ring-brand' : ''}`}>
-            Audit Log
-          </button>
-          <button onClick={() => setTab('pengaturan')} className={`btn-ghost ${tab === 'pengaturan' ? 'ring-2 ring-brand' : ''}`}>
-            Pengaturan
-          </button>
+          {(['tenants', 'audit', 'pengaturan'] as const).map((t) => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`px-4 py-2 rounded-full text-xs font-medium transition-all ${tab === t ? 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.15)]' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent hover:border-white/10'}`}>
+              {t === 'tenants' ? `Tenant (${tenants.length})` : t === 'audit' ? `Audit (${audit.length})` : 'Pengaturan'}
+            </button>
+          ))}
         </div>
 
-        {pesan && <p className="text-sm text-danger">{pesan}</p>}
-        {sukses && <p className="text-sm text-brand">{sukses}</p>}
-
         {tab === 'tenants' && (
-          <section className="card">
-            <h2 className="font-semibold mb-4">Daftar Tenant</h2>
-            {tenants.length === 0 ? (
-              <p className="text-sm text-ink2">Belum ada tenant.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-line text-left text-ink2">
-                      <th className="py-2">Nama</th>
-                      <th className="py-2">Slug</th>
-                      <th className="py-2">Status</th>
-                      <th className="py-2">Dibuat</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tenants.map((t) => (
-                      <tr key={t.id} className="border-b border-line">
-                        <td className="py-2">{t.name}</td>
-                        <td className="py-2 text-ink2">{t.slug}</td>
-                        <td className="py-2">
-                          <span className={`badge ${t.status === 'active' ? 'badge-success' : 'badge-warning'}`}>
-                            {t.status}
-                          </span>
-                        </td>
-                        <td className="py-2 text-ink2">{tgl(t.created_at)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+          <section>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {tenants.map((t) => (
+                <div key={t.id} className="rounded-xl border border-white/10 bg-[#111118]/60 p-4 hover:bg-[#161626] transition-colors group">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-white">{t.name || t.slug}</h3>
+                      <p className="text-xs text-slate-400">{t.slug}</p>
+                    </div>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${t.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
+                      {t.status}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 space-y-0.5">
+                    <p>ID: {t.id}</p>
+                    <p>Kode: {t.id}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </section>
         )}
 
         {tab === 'audit' && (
-          <section className="card">
-            <h2 className="font-semibold mb-4">Audit Log Global</h2>
-            {audit.length === 0 ? (
-              <p className="text-sm text-ink2">Belum ada audit.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-line text-left text-ink2">
-                      <th className="py-2">Tenant</th>
-                      <th className="py-2">Aksi</th>
-                      <th className="py-2">Entitas</th>
-                      <th className="py-2">Waktu</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {audit.map((a) => (
-                      <tr key={a.id} className="border-b border-line">
-                        <td className="py-2 text-ink2">{a.tenant_id}</td>
-                        <td className="py-2">{a.action}</td>
-                        <td className="py-2 text-ink2">{a.entity}{a.entity_id ? `/${a.entity_id}` : ''}</td>
-                        <td className="py-2 text-ink2">{tgl(a.created_at)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+          <section>
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-white/10 text-slate-400">
+                  <th className="text-left py-2.5 px-3 font-medium">Aksi</th>
+                  <th className="text-left py-2.5 px-3 font-medium">Aktor</th>
+                  <th className="text-left py-2.5 px-3 font-medium">Tenant</th>
+                  <th className="text-left py-2.5 px-3 font-medium">Waktu</th>
+                </tr>
+              </thead>
+              <tbody>
+                {audit.map((a) => (
+                  <tr key={a.id} className="border-b border-white/[0.05] hover:bg-white/[0.03] transition-colors">
+                    <td className="py-2.5 px-3 font-medium text-white">{a.action}</td>
+                    <td className="py-2.5 px-3 text-slate-400">{a.tenant_id}</td>
+                    <td className="py-2.5 px-3 text-slate-500">{a.tenant_id}</td>
+                    <td className="py-2.5 px-3 text-slate-500">{tgl(a.created_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </section>
         )}
 
         {tab === 'pengaturan' && (
-          <>
-            <section className="card">
-              <h2 className="font-semibold mb-1">Kunci Xendit Platform</h2>
-              <p className="text-sm text-ink2 mb-4">
-                Dipakai untuk pembuatan QRIS seluruh tenant. Prefix klien hub (mis. <code>sb-</code>).
-              </p>
-              <form onSubmit={simpanXendit} className="space-y-3 max-w-lg">
-                <div>
-                  <label className="block text-sm text-ink2 mb-1">Secret Key Xendit</label>
-                  <input
-                    type="password"
-                    className="field"
-                    value={xenditKey}
-                    onChange={(e) => setXenditKey(e.target.value)}
-                    placeholder="xnd_development_..."
-                    autoComplete="off"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-ink2 mb-1">Prefix Klien Hub</label>
-                  <input
-                    type="text"
-                    className="field"
-                    value={xenditPrefix}
-                    onChange={(e) => setXenditPrefix(e.target.value)}
-                    placeholder="sb-"
-                  />
-                </div>
-                <button type="submit" className="btn-primary">Simpan</button>
-              </form>
-            </section>
+          <section className="space-y-6">
+            <form onSubmit={simpanXendit} className="rounded-xl border border-white/10 bg-[#111118]/40 p-6 space-y-4">
+              <h2 className="text-sm font-bold text-white">Pengaturan Xendit</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label className="block">
+                  <span className="text-[10px] text-slate-400 mb-1 block">Secret Key</span>
+                  <input type="password" value={xenditKey} onChange={e => setXenditKey(e.target.value)}
+                    className="w-full rounded-lg bg-[#0f0f14] border border-white/10 px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/50 transition-all" placeholder="sk_..." />
+                </label>
+                <label className="block">
+                  <span className="text-[10px] text-slate-400 mb-1 block">Prefix</span>
+                  <input type="text" value={xenditPrefix} onChange={e => setXenditPrefix(e.target.value)}
+                    className="w-full rounded-lg bg-[#0f0f14] border border-white/10 px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/50 transition-all" placeholder="mg-..." />
+                </label>
+              </div>
+              <button type="submit" className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-xs font-semibold text-white hover:brightness-110 transition-all shadow-[0_0_20px_rgba(129,140,248,0.25)]">
+                Simpan Kunci
+              </button>
+            </form>
 
-            <section className="card">
-              <h2 className="font-semibold mb-1">Ganti Kata Sandi Superadmin</h2>
-              <p className="text-sm text-ink2 mb-4">Minimal 8 karakter. Perlu kata sandi lama.</p>
-              <form onSubmit={gantiSandi} className="space-y-3 max-w-lg">
-                <div>
-                  <label className="block text-sm text-ink2 mb-1">Kata Sandi Lama</label>
-                  <input
-                    type="password"
-                    className="field"
-                    value={oldPw}
-                    onChange={(e) => setOldPw(e.target.value)}
-                    autoComplete="current-password"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-ink2 mb-1">Kata Sandi Baru</label>
-                  <input
-                    type="password"
-                    className="field"
-                    value={newPw}
-                    onChange={(e) => setNewPw(e.target.value)}
-                    autoComplete="new-password"
-                  />
-                </div>
-                <button type="submit" className="btn-primary">Ganti Kata Sandi</button>
-              </form>
-            </section>
-          </>
+            <form onSubmit={gantiSandi} className="rounded-xl border border-white/10 bg-[#111118]/40 p-6 space-y-4">
+              <h2 className="text-sm font-bold text-white">Ganti Sandi Superadmin</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label className="block">
+                  <span className="text-[10px] text-slate-400 mb-1 block">Sandi Lama</span>
+                  <input type="password" value={oldPw} onChange={e => setOldPw(e.target.value)}
+                    className="w-full rounded-lg bg-[#0f0f14] border border-white/10 px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all" />
+                </label>
+                <label className="block">
+                  <span className="text-[10px] text-slate-400 mb-1 block">Sandi Baru</span>
+                  <input type="password" value={newPw} onChange={e => setNewPw(e.target.value)}
+                    className="w-full rounded-lg bg-[#0f0f14] border border-white/10 px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all" />
+                </label>
+              </div>
+              <button type="submit" className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-amber-600 to-orange-600 px-4 py-2 text-xs font-semibold text-white hover:brightness-110 transition-all shadow-[0_0_20px_rgba(245,158,11,0.25)]">
+                Ganti Sandi
+              </button>
+            </form>
+          </section>
         )}
       </main>
     </div>

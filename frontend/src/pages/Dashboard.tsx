@@ -45,8 +45,8 @@ export default function Dashboard() {
   if (!me) return <div className="min-h-screen bg-canvas px-5 py-16 text-center text-ink2">Memuat…</div>
 
   return (
-    <div className="min-h-screen bg-canvas text-ink">
-      <header className="border-b border-line bg-surface">
+    <div className="min-h-screen bg-[#0f0f14] text-slate-100 font-sans selection:bg-indigo-500/30">
+      <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#0f0f14]/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-5 py-4">
           <Link to="/" className="font-bold">
             Smarthub<span className="text-brand">.</span>
