@@ -175,3 +175,13 @@ Sprint 1: Rekonsiliasi QRIS otomatis (cron tiap 5 menit, CLI reconcile-payments)
 UI/UX: Linear-app design system — dark mode default (#0f0f14), accent indigo/violet, Plus Jakarta Sans font, modern layout per role (Superadmin, Tenant Manager, Bendahara, Sekretaris, Warga).
 Penting: model yang terverifikasi saat ini — `meituan/longcat-2.0:free` (lulus semua tingkat), `cohere/north-mini-code:free`, `nvidia/nemotron-3-super-120b-a12b:free`. `kimi-k3` belum diuji. Free tier bukan untuk produksi.
 Bukti: `go test ./internal/usecase/` OK; CI success; server service active; health endpoint 200; frontend HTTPS 200; deploy script jalan.
+
+### UI/UX Design System — Linear-app (17 Sep 2026)
+- Layer 1 (Superadmin): dark card grid, gradient buttons, clean typography
+- Layer 2 (Tenant Manager/Owner): sticky header, sidebar modern, dark toggle
+- Layer 3 (Sekretaris): invite form dalam dark container
+- Layer 4 (Bendahara): modern card layout untuk keuangan
+- Layer 5 (Warga): modern card untuk tagihan
+- Foundation: `index.css` Linear-app (dark mode #0f0f14, brand #0052FF, Plus Jakarta Sans), `tailwind.config.js` (brand-subtle #EFF6FF, animations)
+- Perbaikan: ErrorBoundary (graceful crash), NotFound (404 modern), App.tsx lazy + Suspense
+- Pelajaran: frontend build dan backend deploy TERPISAH (`git push` ≠ `rsync` ke server). `systemctl reload` tidak cukup saat binary berubah; perlu `daemon-reload` + `restart`. Health endpoint (`/api/health`) harus cocok port (`8082`, bukan `8096`).
