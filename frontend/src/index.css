@@ -162,10 +162,12 @@
   }
 
   /* Input */
-  .input {
+  .input,
+  .field {
     @apply w-full rounded-xl border border-line bg-canvas px-4 py-2.5 text-sm text-ink placeholder-muted outline-none transition-all duration-fast;
   }
-  .input:focus {
+  .input:focus,
+  .field:focus {
     border-color: var(--brand-default);
     box-shadow: 0 0 0 3px var(--brand-subtle);
   }
