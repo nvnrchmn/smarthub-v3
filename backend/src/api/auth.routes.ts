@@ -10,7 +10,7 @@
 // - JWT refresh (7d, di cookie HttpOnly)
 // - OTP: optional dev bypass (tanpa OTP kalau NODE_ENV !== production)
 import { Hono, type Context } from 'hono'
-import { jwt } from 'hono/jwt'
+import { sign, verify } from 'hono/jwt'
 import { z } from 'zod'
 import { eq, and } from 'drizzle-orm/expressions'
 import { getDB } from '../db/provider'
@@ -38,11 +38,10 @@ auth.post('/login', async (c) => {
     const { identifier, password } = LoginSchema.parse(await c.req.json())
     const db = getDB()
 
-    // Cari user via email atau phone
+    // Cari user via email/phone — pakai function bypass RLS (user belum auth)
     const user = await db.query(
-      `SELECT * FROM login_accounts
-       WHERE tenant_id = $1 AND (email = $2 OR phone = $2) AND password_hash IS NOT NULL`,
-      [c.var.tenant_id, identifier]
+      `SELECT * FROM login_accounts_authenticate($1::text)`,
+      [identifier]
     )
 
     if (!user.rows?.length) {
@@ -65,7 +64,7 @@ auth.post('/login', async (c) => {
     const secret = process.env.JWT_SECRET || 'kawaii_neko_2025_dev_secret'
     const now = Math.floor(Date.now() / 1000)
 
-    const accessToken = await jwt.sign({
+    const accessToken = await sign({
       sub: acc.id,
       tenant: acc.tenant_id,
       roles: acc.roles,
@@ -73,7 +72,7 @@ auth.post('/login', async (c) => {
       exp: now + 900, // 15 menit
     }, secret)
 
-    const refreshToken = await jwt.sign({
+    const refreshToken = await sign({
       sub: acc.id,
       type: 'refresh',
       iat: now,
@@ -86,9 +85,9 @@ auth.post('/login', async (c) => {
       `refresh_token=${refreshToken}; HttpOnly; Path=/; Max-Age=604800; SameSite=Strict; Secure`,
     ])
 
-    // Ambil profil
+    // Ambil profil — pakai function bypass RLS
     const profile = await db.query(
-      `SELECT * FROM profiles WHERE login_account_id = $1`,
+      `SELECT * FROM profiles_by_login_account($1)`,
       [acc.id]
     )
 
@@ -111,7 +110,7 @@ auth.post('/login', async (c) => {
     if (e instanceof z.ZodError) {
       return c.json({ error: 'Validasi gagal', details: e.errors }, 400)
     }
-    return c.json({ error: 'Login gagal' }, 500)
+    return c.json({ error: 'Login gagal', detail: e instanceof Error ? e.message : String(e) }, 500)
   }
 })
 
@@ -124,14 +123,14 @@ auth.post('/refresh', async (c) => {
 
   try {
     const secret = process.env.JWT_SECRET || 'kawaii_neko_2025_dev_secret'
-    const payload = await jwt.verify(refreshToken, secret)
+    const payload = await verify(refreshToken, secret)
 
     if (payload.type !== 'refresh') {
       return c.json({ error: 'Token tidak valid' }, 401)
     }
 
     const now = Math.floor(Date.now() / 1000)
-    const newAccessToken = await jwt.sign({
+    const newAccessToken = await sign({
       sub: payload.sub,
       tenant: payload.tenant,
       roles: payload.roles,

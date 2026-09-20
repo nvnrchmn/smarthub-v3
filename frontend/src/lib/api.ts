@@ -69,11 +69,13 @@ async function request<T>(
 }
 
 export const api = {
-  login: (email: string, password: string) =>
-    request<{ token: string; role: string; name: string }>('/auth/login', {
+  login: async (email: string, password: string) => {
+    const res = await request<{ access_token: string; refresh_token: string }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ identifier: email, password }),
-    }),
+    })
+    return { token: res.access_token }
+  },
   me: () => request<Me>('/me'),
   accept: (body: { token: string; otp: string; full_name: string; password: string }) =>
     request<{ token: string }>('/auth/invite/accept', { method: 'POST', body: JSON.stringify(body) }),
