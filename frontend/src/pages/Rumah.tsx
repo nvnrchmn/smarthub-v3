@@ -81,11 +81,11 @@ export default function Rumah() {
   }
 
   return (
-    <div className="min-h-screen bg-canvas text-ink">
+    <div className="min-h-screen bg-[#0f0f14] text-slate-100">
       <header className="sticky top-0 z-10 border-b border-line bg-surface">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3">
           <div>
-            <p className="text-xs text-muted">Smarthub</p>
+            <p className="text-xs text-slate-400">Smarthub</p>
             <h1 className="font-semibold leading-tight">Rumah &amp; Kartu Keluarga</h1>
           </div>
           <button className="btn" onClick={() => nav('/dasbor')}>
@@ -125,11 +125,11 @@ export default function Rumah() {
                 }}
               >
                 <label className="field w-24">
-                  <span className="text-xs text-muted">Blok</span>
+                  <span className="text-xs text-slate-400">Blok</span>
                   <input value={blok} onChange={(e) => setBlok(e.target.value)} required maxLength={10} />
                 </label>
                 <label className="field w-24">
-                  <span className="text-xs text-muted">Nomor</span>
+                  <span className="text-xs text-slate-400">Nomor</span>
                   <input value={nomor} onChange={(e) => setNomor(e.target.value)} required maxLength={10} />
                 </label>
                 <button className="btn-primary" disabled={busy}>
@@ -156,7 +156,7 @@ export default function Rumah() {
                 }}
               >
                 <label className="field">
-                  <span className="text-xs text-muted">Rumah</span>
+                  <span className="text-xs text-slate-400">Rumah</span>
                   <select value={pilihRumah} onChange={(e) => setPilihRumah(e.target.value)} required>
                     <option value="">— pilih rumah —</option>
                     {units.map((u) => (
@@ -167,7 +167,7 @@ export default function Rumah() {
                   </select>
                 </label>
                 <label className="field">
-                  <span className="text-xs text-muted">Warga</span>
+                  <span className="text-xs text-slate-400">Warga</span>
                   <select value={pilihWarga} onChange={(e) => setPilihWarga(e.target.value)} required>
                     <option value="">— pilih warga —</option>
                     {warga.map((w) => (
@@ -178,7 +178,7 @@ export default function Rumah() {
                   </select>
                 </label>
                 <label className="field">
-                  <span className="text-xs text-muted">Jenis hunian</span>
+                  <span className="text-xs text-slate-400">Jenis hunian</span>
                   <select value={tipeHunian} onChange={(e) => setTipeHunian(e.target.value)}>
                     <option value="OWNER_OCCUPANT">Pemilik yang tinggal</option>
                     <option value="TENANT">Penyewa</option>
@@ -199,7 +199,7 @@ export default function Rumah() {
                 </button>
               </form>
               {warga.length === 0 && (
-                <p className="mt-2 text-xs text-muted">
+                <p className="mt-2 text-xs text-slate-400">
                   Belum ada warga terverifikasi. Data muncul setelah sensus warga disetujui.
                 </p>
               )}
@@ -213,7 +213,7 @@ export default function Rumah() {
                       <p className="font-semibold">
                         {u.block}-{u.unit_number}
                       </p>
-                      <p className="text-xs text-muted">{u.notes || 'tanpa catatan'}</p>
+                      <p className="text-xs text-slate-400">{u.notes || 'tanpa catatan'}</p>
                     </div>
                     <span
                       className={
@@ -263,7 +263,7 @@ export default function Rumah() {
                   </div>
                 </li>
               ))}
-              {units.length === 0 && <li className="card text-sm text-ink2">Belum ada rumah terdaftar.</li>}
+              {units.length === 0 && <li className="card text-sm text-slate-400">Belum ada rumah terdaftar.</li>}
             </ul>
           </>
         )}
@@ -280,7 +280,7 @@ export default function Rumah() {
                 }}
               >
                 <label className="field flex-1">
-                  <span className="text-xs text-muted">Nomor KK (16 digit, opsional)</span>
+                  <span className="text-xs text-slate-400">Nomor KK (16 digit, opsional)</span>
                   <input
                     value={kkNumber}
                     onChange={(e) => setKkNumber(e.target.value)}
@@ -293,7 +293,7 @@ export default function Rumah() {
                   Buat
                 </button>
               </form>
-              <p className="mt-2 text-xs text-muted">
+              <p className="mt-2 text-xs text-slate-400">
                 Nomor KK disimpan terenkripsi; daftar hanya menampilkan 4 digit terakhir.
               </p>
             </section>
@@ -306,7 +306,7 @@ export default function Rumah() {
                       <p className="font-semibold">
                         KK ····{c.number_last4 || '????'}
                       </p>
-                      <p className="text-xs text-muted">
+                      <p className="text-xs text-slate-400">
                         {c.member_count} anggota · berkas KK {c.has_file ? 'terunggah' : 'belum ada'}
                       </p>
                     </div>
@@ -314,10 +314,10 @@ export default function Rumah() {
 
                   <ul className="mt-3 space-y-2">
                     {(c.members ?? []).map((m) => (
-                      <li key={m.id} className="flex items-center justify-between gap-2 rounded-lg bg-subtle px-3 py-2">
+                      <li key={m.id} className="flex items-center justify-between gap-2 rounded-lg bg-white/[0.03] px-3 py-2">
                         <div>
                           <p className="text-sm font-medium">{m.full_name}</p>
-                          <p className="text-xs text-muted">
+                          <p className="text-xs text-slate-400">
                             {roleLabelCensus[m.family_role] ?? m.family_role} · {m.verification_status}
                           </p>
                         </div>
@@ -329,7 +329,7 @@ export default function Rumah() {
                         </button>
                       </li>
                     ))}
-                    {(c.members ?? []).length === 0 && <li className="text-xs text-muted">Belum ada anggota.</li>}
+                    {(c.members ?? []).length === 0 && <li className="text-xs text-slate-400">Belum ada anggota.</li>}
                   </ul>
 
                   <form
@@ -344,7 +344,7 @@ export default function Rumah() {
                     }}
                   >
                     <label className="field flex-1">
-                      <span className="text-xs text-muted">Tambah anggota (belum punya KK)</span>
+                      <span className="text-xs text-slate-400">Tambah anggota (belum punya KK)</span>
                       <select value={pilihKK} onChange={(e) => setPilihKK(e.target.value)}>
                         <option value="">— pilih warga —</option>
                         {kandidat.map((m) => (
@@ -360,7 +360,7 @@ export default function Rumah() {
                   </form>
                 </li>
               ))}
-              {cards.length === 0 && <li className="card text-sm text-ink2">Belum ada kartu keluarga.</li>}
+              {cards.length === 0 && <li className="card text-sm text-slate-400">Belum ada kartu keluarga.</li>}
             </ul>
           </>
         )}
