@@ -30,7 +30,7 @@ Jalankan `peta --cek` untuk lihat service + port hidup. Cache di-refresh tiap ja
 
 - Lokasi kode: `/home/nvnrchmn/Projects/smarthub-v3/`
 - Deploy target: `/opt/smarthub-v3/`
-- Service systemd: `smarthub-api.service` (backend), `smarthub-web.service` (frontend)
+- Service systemd: `smarthub-api-v3.service` (backend Bun di port 8082), frontend statis di nginx vhost
 - DB: PostgreSQL (`smarthub` database)
 - Cache: Redis (session + rate limiter)
 - Storage: MinIO (S3 compatible)

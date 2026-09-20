@@ -1,18 +1,17 @@
 // src/index.ts — Hono app entry point (Smarthub V3 backend)
 //
-// Stack: Bun runtime + Hono v3 + Drizzle ORM → PostgreSQL + Redis
+// Stack: Bun runtime + Hono + Drizzle ORM → PostgreSQL + Redis
 //
 // Middleware order:
 //   1. CORS / Logger — global
 //   2. JWT auth        — verify access token, populate c.var.user
-//   3. ScopeGuard      — role-based route protection via prefix
-//   4. RateLimiter     — login: max 5 attempt/15min/IP, API: max 60 req/min
-
+//   3. TenantContext   — SET LOCAL 'app.current_tenant' untuk RLS
+//   4. ScopeGuard      — role-based route protection via prefix
+//
 import { Hono } from 'hono'
 import { jwt } from 'hono/jwt'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
-import { serveStatic } from 'hono/bun-serve'
 
 // ─── Imports ───────────────────────────────────────────
 import { authRoutes } from './api/auth.routes'
@@ -21,13 +20,14 @@ import { houseRoutes } from './api/houses.routes'
 import { billingRoutes } from './api/billing.routes'
 import { invoiceRoutes } from './api/invoices.routes'
 import { paymentRoutes } from './api/payments.routes'
+import { getDB } from './db/provider'
 
 const app = new Hono()
 
 // ─── Middleware global ─────────────────────────────────
 app.use('*', logger())
 
-// CORS — hanya izinkan domain resmi, bukan wildcard
+// CORS — hanya izinkan domain resmi, tidak wildcard
 app.use(
   '*',
   cors({
@@ -40,9 +40,6 @@ app.use(
     credentials: true,
   })
 )
-
-// Serve static uploads (dev: ./public, prod: proxy ke MinIO)
-app.use('/uploads/*', serveStatic({ root: './public' }))
 
 // Health check — tidak butuh auth
 app.route('/api/health', healthRoute)
@@ -57,32 +54,57 @@ const api = new Hono()
 api.use('*', async (c, next) => {
   const authHeader = c.req.header('Authorization')
   if (!authHeader?.startsWith('Bearer ')) {
-    return c.json({ error: 'Unauthenticated' }, 401)
+    return c.json({ error: 'Unauthenticated', code: 'NO_TOKEN' }, 401)
   }
 
   const token = authHeader.slice(7)
   try {
-    const payload = await jwt.verify(token, process.env.JWT_SECRET!)
-    c.set('user', {
-      id: String(payload.sub),
-      tenantId: String(payload.tid),
-      roles: (payload.roles as string[]) ?? [],
-    })
-  } catch {
-    return c.json({ error: 'Invalid or expired token' }, 401)
-  }
+    const secret = process.env.JWT_SECRET || 'kawaii_neko_2025_dev_secret'
+    const payload = await jwt.verify(token, secret)
 
-  // Set tenant context untuk PostgreSQL RLS
-  // app.current_tenant akan di-set via raw query di provider
-  // (Drizzle: SELECT set_config('app.current_tenant', ?, false))
-  await next()
+    const userId = String(payload.sub)
+    const tenantId = String(payload.tenant || payload.tid)
+
+    // Ambil roles + status dari DB (authoritative)
+    const db = getDB()
+    const userCheck = await db.query(
+      `SELECT id, email, phone, roles, status FROM login_accounts WHERE id = $1 AND tenant_id = $2`,
+      [userId, tenantId]
+    )
+
+    if (!userCheck.rows?.length) {
+      return c.json({ error: 'Pengguna tidak valid' }, 401)
+    }
+
+    const user = userCheck.rows[0]
+    if (user.status === 'suspended') {
+      return c.json({ error: 'Akun Anda ditangguhkan' }, 403)
+    }
+
+    // Populate context
+    c.set('user', {
+      id: user.id,
+      email: user.email,
+      phone: user.phone,
+      tenantId: tenantId,
+      roles: user.roles,
+    })
+    c.set('tid', tenantId)
+
+    // 2. Set PostgreSQL tenant context untuk RLS
+    await db.query(`SET LOCAL "app.current_tenant" = $1`, [tenantId])
+
+    await next()
+  } catch {
+    return c.json({ error: 'Invalid or expired token', code: 'TOKEN_EXPIRED' }, 401)
+  }
 })
 
-// 2. Scope guard — prefix-based role protection
-//    /houses/*      → wajib ada di roles (warga/sekretaris/bendahara/manager)
-//    /admin/*       → TENANT_MANAGER + SUPERADMIN
-//    /sec/*         → SECRETARY + SUPERADMIN
-//    /trs/*         → TREASURER + SUPERADMIN
+// 3. Scope guard — prefix-based role protection
+//    /houses/*      → TENANT_MANAGER, SECRETARY, TREASURER, RESIDENT, SUPERADMIN
+//    /billing/*     → TENANT_MANAGER, TREASURER, SUPERADMIN
+//    /invoices/*    → TENANT_MANAGER, TREASURER, SUPERADMIN (read), ADMIN lain read-only
+//    /payments/*    → TENANT_MANAGER, TREASURER, SUPERADMIN
 const SCOPE_PREFIX: Record<string, string[]> = {
   admin: ['TENANT_MANAGER', 'SUPERADMIN'],
   sec: ['SECRETARY', 'SUPERADMIN'],
@@ -99,14 +121,14 @@ api.use('*', async (c, next) => {
     const scope = match[1]
     const allowed = SCOPE_PREFIX[scope]
     if (allowed && !user.roles.some((r: string) => allowed.includes(r))) {
-      return c.json({ error: 'Forbidden' }, 403)
+      return c.json({ error: 'Forbidden — scope tidak diizinkan', code: 'SCOPE_DENIED' }, 403)
     }
   }
 
   await next()
 })
 
-// 3. Route registration
+// 4. Route registration
 api.route('/houses', houseRoutes)
 api.route('/billing', billingRoutes)
 api.route('/invoices', invoiceRoutes)

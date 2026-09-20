@@ -8,21 +8,20 @@
 FROM oven/bun:latest AS builder
 WORKDIR /app
 COPY package.json bun.lockb* ./
-RUN bun install --frozen-lockfile
+RUN bun install  # tanpa frozen-lockfile, belum ada lockfile
 COPY . .
-RUN bun build src/index.ts --outdir=dist --format=esm
+RUN bun build src/index.ts --outdir=dist --format=esm --target=bun
 
 # Stage 2: Runtime (hanya production deps)
 FROM oven/bun:latest AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package.json bun.lockb* ./
-RUN bun install --frozen-lockfile --production
+RUN bun install --production  # tanpa frozen-lockfile, belum ada lockfile
 
 # Salin hasil build + file penting
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/src/db/migrations ./src/db/migrations
-COPY drizzle.config.ts ./
 
 # Port: 8082 (smarthub-api)
 EXPOSE 8082
