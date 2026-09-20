@@ -49,11 +49,17 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Deploy frontend
+      - name: Deploy frontend to VPS
         run: |
-          rsync -avz --delete --chown=www:www --rsync-path="sudo rsync" \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-            frontend/dist/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/www/wwwroot/smarthub.logikraf.id/web/
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "set -e; \
+             sudo mkdir -p /www/wwwroot/smarthub.logikraf.id/web; \
+             sudo cp -r /www/wwwroot/smarthub.logikraf.id/web/ /tmp/web-backup \
+               || echo '[backup] none to copy (first deploy)'; \
+             sudo rsync -av --delete \
+               -e 'ssh -i /home/actions/.ssh/deploy_key' \
+             frontend/dist/ /www/wwwroot/smarthub.logikraf.id/web/"
 
       - name: Deploy backend container
         run: |
