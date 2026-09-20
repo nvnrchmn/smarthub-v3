@@ -7,6 +7,13 @@ const SUPERADMIN_TOKEN_KEY = 'smarthub.superadmin.token'
 
 export type Me = { user_id: string; tenant_id: string; roles: string[]; status: string }
 
+export type Health = {
+  status: string
+  database: boolean
+  redis: boolean
+  service: string
+}
+
 export const auth = {
   get: () => localStorage.getItem(TOKEN_KEY),
   set: (t: string) => localStorage.setItem(TOKEN_KEY, t),
