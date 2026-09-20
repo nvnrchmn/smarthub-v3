@@ -72,7 +72,7 @@ export const api = {
   login: (email: string, password: string) =>
     request<{ token: string; role: string; name: string }>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ identifier: email, password }),
     }),
   me: () => request<Me>('/me'),
   accept: (body: { token: string; otp: string; full_name: string; password: string }) =>

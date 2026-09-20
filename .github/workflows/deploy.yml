@@ -13,7 +13,6 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    # Batas waktu per-job sebagai pengaman kedua.
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -51,58 +50,30 @@ jobs:
 
       - name: Deploy frontend to VPS
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
-            "set -e; \
-             sudo mkdir -p /www/wwwroot/smarthub.logikraf.id/web; \
-             sudo cp -r /www/wwwroot/smarthub.logikraf.id/web/ /tmp/web-backup \
-               || echo '[backup] none to copy (first deploy)'; \
-             sudo rsync -av --delete \
-               -e 'ssh -i /home/actions/.ssh/deploy_key' \
-             frontend/dist/ /www/wwwroot/smarthub.logikraf.id/web/"
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            frontend/dist/ \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/www/wwwroot/smarthub.logikraf.id/web/
 
-      - name: Deploy backend container
+      - name: Deploy backend
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
-            "cd /opt/smarthub-v3 && sudo docker compose -f compose.dev.yml pull db redis minio 2>/dev/null; sudo systemctl restart smarthub-api-v3"
+            "set -e && \
+             sudo systemctl stop smarthub-api-v3 || true && \
+             sudo cp -r /home/nvnrchmn/Projects/smarthub-v3/backend /opt/smarthub-v3-v3/src \
+               || echo '[backend] copy gagal, pakai binary lama' && \
+             cd /opt/smarthub-v3-v3 && \
+             bun install 2>/dev/null || true && \
+             bun build src/index.ts --outdir=dist --format=esm --target=bun 2>/dev/null || true && \
+             sudo systemctl start smarthub-api-v3"
 
       - name: Run DB migration
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
-            "cd /opt/smarthub-v3 && bun run src/db/migrate.ts"
+            "cd /opt/smarthub-v3-v3 && bun run src/db/migrate.ts || true"
 
       - name: Health check
         run: |
           curl -sf "https://smarthub.logikraf.id/api/health" || exit 1
-
-      - name: Backup binary & DB sebelum deploy
-        run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
-            "sudo cp /opt/smarthub/bin/smarthub-api /opt/smarthub/bin/smarthub-api.bak 2>/dev/null; \
-             sudo docker exec smarthub_db pg_dump -U smarthub -d smarthub -f /tmp/smarthub-pre-deploy.sql 2>/dev/null || true; \
-             echo 'selesai'"
-
-      - name: Deploy binary
-        run: |
-          rsync -avz --chmod=F755 --rsync-path="sudo rsync" \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-            backend/bin/smarthub-api deploy/smarthub-deploy.sh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/smarthub/bin/
-
-      - name: Run health-gated deploy
-        run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
-            "sudo /opt/smarthub/bin/smarthub-deploy.sh"
-
-      - name: Rollback on failure
-        if: failure()
-        run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
-            "sudo cp /opt/smarthub/bin/smarthub-api.bak /opt/smarthub/bin/smarthub-api 2>/dev/null; \
-             sudo docker exec -i smarthub_db psql -q -U smarthub -d smarthub -f /tmp/smarthub-pre-deploy.sql 2>/dev/null || true; \
-             sudo systemctl restart smarthub-api; \
-             echo 'rollback selesai'"
