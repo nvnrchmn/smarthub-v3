@@ -1,0 +1,80 @@
+# docker-compose.yml — Smarthub V3 dev environment
+#
+# Usage:
+#   docker compose up -d        # start infra (DB, Redis, MinIO)
+#   docker compose run --rm api bun install   # install deps
+#   docker compose run --rm api bun run dev     # start dev server
+#
+# Port tidak bentrok dengan service lama: pakai 15432, 16379, 19000-19001
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: smarthub_v3_db
+    environment:
+      POSTGRES_DB: smarthub_dev
+      POSTGRES_USER: smarthub
+      POSTGRES_PASSWORD: smarthub123
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "15432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smarthub"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: smarthub_v3_redis
+    command: redis-server --appendonly yes
+    ports:
+      - "16379:6379"
+    volumes:
+      - redis_data:/data
+
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: smarthub_v3_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "19000:9000"
+      - "19001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "-x", "MINIO_ROOT_USER", "-w", "MINIO_ROOT_PASSWORD", "minio"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    container_name: smarthub_v3_api
+    command: bun run dev
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - bun_run_data:/root/.bun
+    ports:
+      - "8082:8082"
+    env_file: .env.dev
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+volumes:
+  db_data:
+  redis_data:
+  minio_data:
+  bun_run_data:
+
+networks:
+  default:
+    name: smarthub_v3_network

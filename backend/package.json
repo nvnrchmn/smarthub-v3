@@ -1,0 +1,19 @@
+{
+  "name": "smarthub-v3-backend",
+  "version": "3.0.0",
+  "description": "Smarthub V3 backend",
+  "type": "module",
+  "main": "src/index.ts",
+  "engines": {
+    "bun": "1.2.0"
+  },
+  "scripts": {
+    "dev": "bun --hot src/index.ts",
+    "start": "bun src/index.ts",
+    "build": "bun build src/index.ts --outdir=dist --format=esm"
+  },
+  "dependencies": {
+    "hono": "^3.14.0",
+    "@hono/node-server": "^1.13.0"
+  }
+}

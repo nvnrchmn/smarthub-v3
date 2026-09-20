@@ -1,9 +1,11 @@
-.env
-node_modules
-dist
-.git
-*.tsbuildinfo
+.env*
+!.env.example
+!.env.dev
+frontend/dist/
+backend/node_modules/
+backend/dist/
 .DS_Store
+*.tsbuildinfo
 .svelterc
 .env*
 !.env.example
