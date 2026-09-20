@@ -73,9 +73,9 @@ export default function Verifikasi() {
   }
 
   const badge: Record<string, string> = {
-    UNVERIFIED: 'border-warn/40 bg-warn/10 text-warn',
-    VERIFIED: 'border-ok/40 bg-ok/10 text-ok',
-    REJECTED: 'border-danger/40 bg-danger/10 text-danger',
+    UNVERIFIED: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
+    VERIFIED: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
+    REJECTED: 'border-rose-500/30 bg-rose-500/10 text-rose-400',
   }
 
   return (
