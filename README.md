@@ -1,53 +1,42 @@
-# Smarthub v3
+# Smarthub V3 — Fullstack TypeScript Starter
 
-Platform multi-tenant untuk perumahan: iuran (QRIS dinamis + kas tunai),
-sensus warga dengan data pribadi terenkripsi, dan pengingat tunggakan.
+Multi-tenant SaaS untuk manajemen perumahan (RT/RW).
 
-## Modul yang Sudah Ada
+## 🏗️ Stack
+- **Backend**: Bun + Hono.js + Drizzle ORM → PostgreSQL
+- **Frontend**: React 19 + Vite + TailwindCSS
+- **Cache**: Redis (session + rate limiter)
+- **Storage**: MinIO (S3 compatible)
+- **Deploy**: Docker Compose → GitHub Actions → VPS
 
-| Modul | Status |
-|---|---|
-| Rekonsiliasi QRIS otomatis | ✅ Cron tiap 5 menit |
-| Kas tunai + setoran bank | ✅ |
-| Sensus warga + enkripsi AES | ✅ |
-| Sesi JWT + logout/cabut token | ✅ |
-| Lupa sandi via WhatsApp | ✅ |
-| Pengingat tunggakan via WhatsApp | ✅ |
-| Paginasi & validasi upload | ✅ |
-| Redis limiter (fallback memori) | ✅ |
+## 🚀 Quick Start (dev)
 
-## Roadmap
+```bash
+# 1. Clone
+git clone https://github.com/nvnrchmn/smarthub-v3.git
 
-| Prioritas | Modul |
-|---|---|
-| Tinggi | Test jalur uang (invoice → bayar → rekonsiliasi) |
-| Tinggi | 2FA admin |
-| Tinggi | Limiter login per-IP |
-| Sedang | Laporan PDF (tunggakan, kas, sensus) |
-| Sedang | Health endpoint + rollback otomatis |
-| Rendah | Sitemap/PWA/analytics |
-| Undur | Persuratan, forum, lapak warga |
+# 2. Start infrastructure
+docker compose up -d db redis minio
 
-## Struktur
+# 3. Backend
+cd backend && bun install && bun run dev
 
-- `backend/` — Go (Fiber), clean architecture. `cmd/api` = HTTP API, `internal/` = config, db, domain, usecase, repository, delivery.
-- `backend/migrations/` — SQL idempoten (aman dijalankan berulang oleh CI).
-- `frontend/` — React + Vite + TypeScript + Tailwind.
-- `deploy/` — unit systemd + vhost nginx + compose datastore.
+# 4. Frontend
+cd ../frontend && npm install && npm run dev
+```
 
-## Infrastruktur (VPS)
+## 🐋 Deploy
 
-- Datastore dijalankan sebagai container (`/opt/smarthub/compose.yml`): PostgreSQL 17, Redis 7, MinIO — semuanya hanya bind ke 127.0.0.1.
-- Aplikasi berjalan sebagai service systemd `smarthub-api` (port 8096) di belakang nginx aaPanel.
-- Kredensial ada di `/etc/smarthub.env` (600) dan `/opt/smarthub/.env` (600) — **tidak pernah** masuk repo.
+```bash
+docker compose -f compose.prod.yml up -d
+```
 
-## Isolasi tenant
+## 🔐 Security
+- `.env.production` is NOT committed. Use `docker compose --env-file`.
+- All endpoints require JWT with scope-based auth.
+- PostgreSQL RLS isolates tenant data.
+- Login rate-limited (5 attempt / 15 min per IP).
 
-RLS PostgreSQL aktif di semua tabel ber-`tenant_id`. Koneksi aplikasi memakai peran
-`smarthub_app` (bukan superuser) dan menyetel `app.tenant_id` per request; baris tenant
-lain tidak terlihat walaupun query lupa memakai filter.
-
-## Deploy
-
-Push ke `main` → GitHub Actions membangun frontend + binary Go, menyalinnya ke VPS,
-menjalankan migrasi, lalu me-restart `smarthub-api`. Jangan build di server.
+## 📖 Docs
+- `AGENTS.md` — coding standards & deployment rules
+- `PRD.md` — full feature spec & sprint plan

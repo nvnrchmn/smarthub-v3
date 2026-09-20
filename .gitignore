@@ -1,21 +1,9 @@
-# --- Go ---
-backend/bin/
-*.exe
-*.test
-*.out
-
-# --- Node ---
-node_modules/
-frontend/dist/
-frontend/.vite/
-
-# --- Rahasia & data lokal ---
 .env
-.env.*
-!.env.example
-
-# --- OS/IDE ---
+node_modules
+dist
+.git
+*.tsbuildinfo
 .DS_Store
-.idea/
-.vscode/
-*.swp
+.svelterc
+.env*
+!.env.example
