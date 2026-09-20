@@ -115,6 +115,8 @@ export type ResidentProfile = {
 export const CENSUS_STAFF_ROLES = ['TENANT_MANAGER', 'SECRETARY']
 
 export const census = {
+  list: async () =>
+    (await request<{ items: ResidentProfile[] | null }>('/census/residents')).items ?? [],
   me: () => request<ResidentProfile>('/census/me'),
   submitMe: (body: Record<string, unknown>) =>
     request<ResidentProfile>('/census/me', { method: 'POST', body: JSON.stringify(body) }),
