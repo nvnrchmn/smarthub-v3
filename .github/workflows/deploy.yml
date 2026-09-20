@@ -22,24 +22,25 @@ jobs:
         with:
           node-version: '20'
 
-      - uses: actions/setup-go@v5
+      - name: Setup Bun
+        uses: oven/shinybot@v1
         with:
-          go-version: '1.25'
+          bun-version: latest
 
+      - name: Install frontend deps
+        run: |
+          cd frontend
+          npm ci
 
       - name: Build frontend
         run: |
           cd frontend
-          npm ci
           npm run build
 
-      - name: Build Go binary
+      - name: Build backend (Docker)
         run: |
           cd backend
-          go vet ./...
-          go test ./...
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o bin/smarthub-api ./cmd/api
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o bin/smarthub-cli ./cmd/cli
+          docker build -t smarthub-api:latest .
 
       - name: Setup SSH
         run: |
@@ -52,7 +53,23 @@ jobs:
         run: |
           rsync -avz --delete --chown=www:www --rsync-path="sudo rsync" \
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-            frontend/dist/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/www/wwwroot/smarthub.logikraf.id/
+            frontend/dist/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/www/wwwroot/smarthub.logikraf.id/web/
+
+      - name: Deploy backend container
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "cd /opt/smarthub-v3 && sudo docker compose -f compose.dev.yml pull db redis minio 2>/dev/null; sudo systemctl restart smarthub-api-v3"
+
+      - name: Run DB migration
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "cd /opt/smarthub-v3 && bun run src/db/migrate.ts"
+
+      - name: Health check
+        run: |
+          curl -sf "https://smarthub.logikraf.id/api/health" || exit 1
 
       - name: Backup binary & DB sebelum deploy
         run: |
