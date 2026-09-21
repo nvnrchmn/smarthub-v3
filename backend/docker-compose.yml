@@ -39,7 +39,7 @@ services:
     volumes:
       - minio_data:/data
     healthcheck:
-      test: ["CMD", "mc", "ready", "-x", "MINIO_ROOT_USER", "-w", "MINIO_ROOT_PASSWORD", "minio"]
+      test: ["CMD", "mc", "ready", "local"]
       interval: 10s
       timeout: 5s
       retries: 5
