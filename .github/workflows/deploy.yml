@@ -1,15 +1,17 @@
 name: Build and Deploy
 
+# Deploy dipindah ke build lokal di VPS (22 Sep 2026). Pemicu lama:
+# on:
+#   push:
+#     branches: [main]
+#     paths-ignore:
+#       - '**.md'
+#       - '.hermesrules'
+#       - 'docs/**'
+#       - 'LICENSE'
+#   workflow_dispatch:
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - '**.md'
-      - '.hermesrules'
-      - 'docs/**'
-      - 'LICENSE'
   workflow_dispatch:
-
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
